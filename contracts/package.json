@@ -1,0 +1,53 @@
+{
+  "name": "defi-dashboard-contracts",
+  "version": "1.0.0",
+  "description": "Cross-Chain DeFi Dashboard Smart Contracts",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "test:coverage": "hardhat coverage",
+    "deploy": "hardhat run scripts/deploy.ts",
+    "deploy:mainnet": "hardhat run scripts/deploy.ts --network mainnet",
+    "deploy:polygon": "hardhat run scripts/deploy.ts --network polygon",
+    "deploy:bsc": "hardhat run scripts/deploy.ts --network bsc",
+    "deploy:avalanche": "hardhat run scripts/deploy.ts --network avalanche",
+    "deploy:arbitrum": "hardhat run scripts/deploy.ts --network arbitrum",
+    "verify": "hardhat verify",
+    "node": "hardhat node",
+    "clean": "hardhat clean",
+    "lint": "solhint 'contracts/**/*.sol'",
+    "lint:fix": "solhint 'contracts/**/*.sol' --fix"
+  },
+  "dependencies": {
+    "@chainlink/contracts": "^0.8.0",
+    "@openzeppelin/contracts": "^5.0.0",
+    "@uniswap/v3-core": "^1.0.1",
+    "@uniswap/v3-periphery": "^1.4.3",
+    "hardhat": "^2.19.0",
+    "hardhat-deploy": "^0.12.0",
+    "hardhat-deploy-ethers": "^0.3.0",
+    "hardhat-etherscan": "^3.1.7",
+    "hardhat-gas-reporter": "^1.0.9",
+    "hardhat-spdx-license-identifier": "^3.0.0",
+    "hardhat-tracer": "^1.1.0",
+    "hardhat-watcher": "^2.2.1",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.2",
+    "@nomicfoundation/hardhat-ethers": "^3.0.5",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@typechain/ethers-v6": "^0.4.3",
+    "@typechain/hardhat": "^9.1.0",
+    "chai": "^4.3.10",
+    "ethers": "^6.8.1",
+    "solidity-coverage": "^0.8.5",
+    "typechain": "^8.3.1"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.5",
+    "@types/mocha": "^10.0.1",
+    "solhint": "^4.0.0",
+    "prettier": "^3.1.0",
+    "prettier-plugin-solidity": "^1.3.1"
+  }
+}

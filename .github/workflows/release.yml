@@ -18,29 +18,64 @@ jobs:
         node-version: '20.x'
         cache: 'npm'
 
-    - name: Install dependencies
-      run: npm ci
+    - name: Install root dependencies
+      run: npm install
 
-    - name: Run tests
-      run: npm run validate
+    - name: Install frontend dependencies
+      run: cd frontend && npm install
 
-    - name: Build extension
-      run: npm run build
+    - name: Install backend dependencies
+      run: cd backend && npm install
+
+    - name: Install contracts dependencies
+      run: cd contracts && npm install
+
+    - name: Run all tests
+      run: |
+        cd frontend && npm run test
+        cd ../backend && npm run test
+        cd ../contracts && npm run test
+
+    - name: Build frontend
+      run: cd frontend && npm run build
+
+    - name: Build backend
+      run: cd backend && npm run build
+
+    - name: Compile contracts
+      run: cd contracts && npm run compile
 
     - name: Create release
       uses: softprops/action-gh-release@v2
       with:
         files: |
-          dist/**/*
+          frontend/dist/**/*
+          backend/dist/**/*
+          contracts/artifacts/**/*
+          contracts/cache/**/*
         generate_release_notes: true
         draft: false
         prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Upload extension package
+    - name: Upload frontend package
       uses: actions/upload-artifact@v4
       with:
-        name: cartridge-extension-${{ github.ref_name }}
-        path: dist/
+        name: defi-dashboard-frontend-${{ github.ref_name }}
+        path: frontend/dist/
+        retention-days: 90
+
+    - name: Upload backend package
+      uses: actions/upload-artifact@v4
+      with:
+        name: defi-dashboard-backend-${{ github.ref_name }}
+        path: backend/dist/
+        retention-days: 90
+
+    - name: Upload contracts package
+      uses: actions/upload-artifact@v4
+      with:
+        name: defi-dashboard-contracts-${{ github.ref_name }}
+        path: contracts/artifacts/
         retention-days: 90

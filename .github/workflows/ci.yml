@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main, develop, feat/wallet_core ]
   pull_request:
     branches: [ main ]
 
@@ -23,26 +23,63 @@ jobs:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
 
-    - name: Install dependencies
-      run: npm ci
+    - name: Install root dependencies
+      run: npm install
 
-    - name: Run linting
+    - name: Install frontend dependencies
+      run: cd frontend && npm install
+
+    - name: Install backend dependencies
+      run: cd backend && npm install
+
+    - name: Install contracts dependencies
+      run: cd contracts && npm install
+
+    - name: Run root linting
       run: npm run lint
 
-    - name: Run type checking
-      run: npm run type-check
+    - name: Run frontend linting
+      run: cd frontend && npm run lint
 
-    - name: Run tests
-      run: npm run test
+    - name: Run backend linting
+      run: cd backend && npm run lint
 
-    - name: Build extension
-      run: npm run build
+    - name: Run frontend type checking
+      run: cd frontend && npm run type-check
 
-    - name: Upload build artifacts
+    - name: Run backend type checking
+      run: cd backend && npm run type-check
+
+    - name: Run frontend tests
+      run: cd frontend && npm run test
+
+    - name: Run backend tests
+      run: cd backend && npm run test
+
+    - name: Run contract tests
+      run: cd contracts && npm run test
+
+    - name: Build frontend
+      run: cd frontend && npm run build
+
+    - name: Build backend
+      run: cd backend && npm run build
+
+    - name: Compile contracts
+      run: cd contracts && npm run compile
+
+    - name: Upload frontend build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: extension-build-${{ matrix.node-version }}
-        path: dist/
+        name: frontend-build-${{ matrix.node-version }}
+        path: frontend/dist/
+        retention-days: 7
+
+    - name: Upload backend build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-build-${{ matrix.node-version }}
+        path: backend/dist/
         retention-days: 7
 
   security:
@@ -58,11 +95,29 @@ jobs:
         node-version: '20.x'
         cache: 'npm'
 
-    - name: Install dependencies
-      run: npm ci
+    - name: Install root dependencies
+      run: npm install
 
-    - name: Run security audit
+    - name: Install frontend dependencies
+      run: cd frontend && npm install
+
+    - name: Install backend dependencies
+      run: cd backend && npm install
+
+    - name: Install contracts dependencies
+      run: cd contracts && npm install
+
+    - name: Run root security audit
       run: npm audit --audit-level=high
+
+    - name: Run frontend security audit
+      run: cd frontend && npm audit --audit-level=high
+
+    - name: Run backend security audit
+      run: cd backend && npm audit --audit-level=high
+
+    - name: Run contracts security audit
+      run: cd contracts && npm audit --audit-level=high
 
     - name: Run security audit with JSON output
       run: npm audit --audit-level=high --json > audit-report.json || true

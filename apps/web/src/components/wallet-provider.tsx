@@ -9,6 +9,7 @@ import { QueryClientProvider, QueryClient } from '@tanstack/react-query'
 import { http } from 'wagmi'
 
 // Create config with proper SSR handling
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 let config: any = null
 
 function getWagmiConfig() {

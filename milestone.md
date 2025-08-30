@@ -33,7 +33,7 @@ To empower individuals and communities to build financial discipline and resilie
 
 ### Week 1: Smart Contract Foundation
 - [ ] Smart contract design → savings lock, penalty logic, swaps
-- [ ] Deploy basic contracts on Ethereum testnet (Sepolia)
+- [ ] Deploy basic contracts on Celo testnet (Sepolia)
 - [ ] Set up development environment and testing framework
 
 ### Week 2: Frontend Foundation

@@ -1,7 +1,7 @@
 {
-  "name": "cartridge",
+  "name": "safelock",
   "version": "0.1.0",
-  "description": "A new Celo blockchain project",
+  "description": "A decentralized contingency platform for savings, transfers, and swaps with time-locked discipline",
   "private": true,
   "scripts": {
     "build": "turbo build",
@@ -13,10 +13,15 @@
     "contracts:test": "turbo run test --filter=hardhat",
     "contracts:deploy": "turbo run deploy --filter=hardhat",
     "contracts:deploy:alfajores": "turbo run deploy:alfajores --filter=hardhat",
-    "contracts:deploy:celo": "turbo run deploy:celo --filter=hardhat"
+    "contracts:deploy:celo": "turbo run deploy:celo --filter=hardhat",
+    "commitlint": "commitlint --edit",
+    "prepare": "husky install"
   },
   "devDependencies": {
+    "@commitlint/cli": "^18.4.3",
+    "@commitlint/config-conventional": "^18.4.3",
     "@types/node": "^20.8.0",
+    "husky": "^8.0.3",
     "turbo": "^1.10.16",
     "typescript": "^5.2.2"
   },

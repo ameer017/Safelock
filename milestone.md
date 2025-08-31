@@ -7,7 +7,6 @@
 SafeLock is a Web3-native savings and contingency platform where users can:
 - Save money with time-locked smart contracts
 - Send/receive funds instantly via human-readable addresses
-- Swap between tokens seamlessly
 - Face penalties for early withdrawals to encourage financial discipline
 
 This creates a decentralized safety net that blends the security of DeFi with the accountability of traditional "fixed deposit" savings schemes.
@@ -23,16 +22,15 @@ SafeLock solves this by building a decentralized, transparent, and disciplined f
 - **Time-locked savings smart contracts**: Users set savings goals (e.g., 6 months) and can't withdraw early without penalty
 - **Penalty → Pool Incentives**: Early withdrawal penalties are redistributed to other savers, rewarding discipline
 - **Peer-to-peer transfers**: Send/receive funds across borders instantly, powered by ENS or EVM-compatible name service
-- **Built-in swapping**: Users can swap stablecoins or native tokens directly within the app
 - **Decentralized, no custodian**: All funds are managed by smart contracts, not middlemen
 
 ## 🎯 Mission
-To empower individuals and communities to build financial discipline and resilience using decentralized technology, ensuring savings, remittances, and swaps are secure, borderless, and transparent.
+To empower individuals and communities to build financial discipline and resilience using decentralized technology, ensuring savings and remittances are secure, borderless, and transparent.
 
 ## 🕒 Development Timeline (4 Weeks)
 
 ### Week 1: Smart Contract Foundation
-- [ ] Smart contract design → savings lock, penalty logic, swaps
+- [ ] Smart contract design → savings lock, penalty logic
 - [ ] Deploy basic contracts on Celo testnet (Sepolia)
 - [ ] Set up development environment and testing framework
 
@@ -43,7 +41,6 @@ To empower individuals and communities to build financial discipline and resilie
 
 ### Week 3: Core Features Implementation
 - [ ] Implement penalty → incentive redistribution logic
-- [ ] Add swap feature via simple AMM pool or 1inch aggregator
 - [ ] Start basic testing + bug fixes
 - [ ] Integration testing between contracts and frontend
 
@@ -61,7 +58,7 @@ To empower individuals and communities to build financial discipline and resilie
 - [ ] Smart contracts deployed and tested on testnet
 - [ ] Frontend application with core functionality
 - [ ] Working savings lock mechanism with penalty system
-- [ ] Functional transfer and swap features
+- [ ] Functional transfer features
 - [ ] Complete documentation and deployment guide
 
 ## 🔧 Technical Requirements
@@ -70,4 +67,3 @@ To empower individuals and communities to build financial discipline and resilie
 - **Frontend**: Next.js with TypeScript
 - **Wallet Integration**: MetaMask, WalletConnect
 - **Name Service**: ENS or EVM-compatible alternative
-- **Swap Integration**: 1inch aggregator or simple AMM

@@ -1,10 +1,10 @@
-# 🛡️ SafeLock Project Milestones
+# 🛡️ Cartridge Project Milestones
 
 ## 📛 Project Name
-**SafeLock** — A decentralized contingency platform for savings, transfers, and swaps with time-locked discipline.
+**Cartridge** — A decentralized contingency platform for savings, transfers, and swaps with time-locked discipline.
 
 ## 📝 Description
-SafeLock is a Web3-native savings and contingency platform where users can:
+Cartridge is a Web3-native savings and contingency platform where users can:
 - Save money with time-locked smart contracts
 - Send/receive funds instantly via human-readable addresses
 - Face penalties for early withdrawals to encourage financial discipline
@@ -18,10 +18,9 @@ This creates a decentralized safety net that blends the security of DeFi with th
 - **Cross-border inefficiency**: Sending/receiving money across countries is slow and costly
 
 ## ✅ Solution Statement
-SafeLock solves this by building a decentralized, transparent, and disciplined financial layer:
+Cartridge solves this by building a decentralized, transparent, and disciplined financial layer:
 - **Time-locked savings smart contracts**: Users set savings goals (e.g., 6 months) and can't withdraw early without penalty
 - **Penalty → Pool Incentives**: Early withdrawal penalties are redistributed to other savers, rewarding discipline
-- **Peer-to-peer transfers**: Send/receive funds across borders instantly, powered by ENS or EVM-compatible name service
 - **Decentralized, no custodian**: All funds are managed by smart contracts, not middlemen
 
 ## 🎯 Mission
@@ -30,17 +29,15 @@ To empower individuals and communities to build financial discipline and resilie
 ## 🕒 Development Timeline (4 Weeks)
 
 ### Week 1: Smart Contract Foundation
-- [ ] Smart contract design → savings lock, penalty logic
-- [ ] Deploy basic contracts on Celo testnet (Sepolia)
+- [x] Smart contract design → savings lock, penalty logic
+- [ ] Deploy basic contracts on Celo testnet (Alfajores cUSD)
 - [ ] Set up development environment and testing framework
 
 ### Week 2: Frontend Foundation
-- [ ] Frontend scaffold: wallet connect, savings dashboard, send/receive UI
-- [ ] Integrate ENS for human-readable transfers
+- [ ] Frontend scaffold: wallet connect, savings dashboard
 - [ ] Basic UI components and layout structure
 
 ### Week 3: Core Features Implementation
-- [ ] Implement penalty → incentive redistribution logic
 - [ ] Start basic testing + bug fixes
 - [ ] Integration testing between contracts and frontend
 
@@ -58,12 +55,10 @@ To empower individuals and communities to build financial discipline and resilie
 - [ ] Smart contracts deployed and tested on testnet
 - [ ] Frontend application with core functionality
 - [ ] Working savings lock mechanism with penalty system
-- [ ] Functional transfer features
 - [ ] Complete documentation and deployment guide
 
 ## 🔧 Technical Requirements
-- **Blockchain**: Celo (Sepolia testnet for development)
+- **Blockchain**: Celo (Alfajores cUSD testnet for development)
 - **Smart Contracts**: Solidity with Hardhat
 - **Frontend**: Next.js with TypeScript
 - **Wallet Integration**: MetaMask, WalletConnect
-- **Name Service**: ENS or EVM-compatible alternative

@@ -7,10 +7,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @title SafeLock
+ * @title Cartridge
  * @dev A decentralized savings platform with time-locked deposits, penalty system
  */
-contract SafeLock is Initializable, UUPSUpgradeable {
+contract Cartridge is Initializable, UUPSUpgradeable {
     using SafeERC20 for IERC20;
 
     // Ownership

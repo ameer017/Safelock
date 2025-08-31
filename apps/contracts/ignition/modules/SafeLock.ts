@@ -1,21 +1,21 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
 require("dotenv").config();
 
-export default buildModule("SafeLock", (m) => {
+export default buildModule("Cartridge", (m) => {
   // Celo cUSD token addresses
   const cUSD_ALFAJORES_ADDRESS = process.env.CUSD_ALFAJORES_ADDRESS;
   
   // Deploy the implementation contract
-  const safeLockImplementation = m.contract("SafeLock");
+  const CartridgeImplementation = m.contract("Cartridge");
   
   // Deploy the proxy contract with initialization
-  const safeLockProxy = m.contract("SafeLockProxy", [
-    safeLockImplementation,
+  const CartridgeProxy = m.contract("CartridgeProxy", [
+    CartridgeImplementation,
     "0x" // Placeholder for init data - will be set during deployment
   ]);
   
   return { 
-    safeLockImplementation,
-    safeLockProxy 
+    CartridgeImplementation,
+    CartridgeProxy 
   };
 });

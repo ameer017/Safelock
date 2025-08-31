@@ -1,12 +1,12 @@
-# 🛡️ SafeLock
+# 🛡️ Cartridge
 
 **Save smarter. Spend wiser. Build discipline. — The decentralized contingency plan you can't cheat.**
 
 A decentralized contingency platform for savings, transfers, and swaps with time-locked discipline, built with Next.js, TypeScript, and Turborepo.
 
-## 🎯 What is SafeLock?
+## 🎯 What is Cartridge?
 
-SafeLock is a Web3-native savings and contingency platform that empowers users to build financial discipline through:
+Cartridge is a Web3-native savings and contingency platform that empowers users to build financial discipline through:
 
 - **Time-locked savings** with smart contracts that prevent early withdrawals
 - **Instant cross-border transfers** via human-readable addresses (ENS)
@@ -69,7 +69,7 @@ This is a monorepo managed by Turborepo with the following structure:
 
 ## 🎯 Development Goals
 
-SafeLock aims to solve key problems in personal finance:
+Cartridge aims to solve key problems in personal finance:
 - **Low savings culture** - Providing structured, time-locked savings mechanisms
 - **Impulse withdrawals** - Implementing penalty systems that encourage discipline
 - **Trust issues** - Building on decentralized, transparent smart contracts

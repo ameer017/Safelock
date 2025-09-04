@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
- * @title Cartridge
- * @dev A decentralized savings platform with time-locked deposits, penalty system
+ * @title SafeLock
+ * @dev A decentralized savings platform with time-locked deposits, penalty system,
+ * user registration, and emergency account deactivation
  */
-contract Cartridge is Initializable, UUPSUpgradeable {
+contract SafeLock {
     using SafeERC20 for IERC20;
 
     // Ownership
@@ -18,13 +17,9 @@ contract Cartridge is Initializable, UUPSUpgradeable {
 
     // Custom pause functionality
     bool public isPaused;
-    bool public isSavingsPaused;
-    bool public isWithdrawalsPaused;
 
-    // Pause timestamps for tracking
+    // Pause timestamp for tracking
     uint256 public pauseTimestamp;
-    uint256 public savingsPauseTimestamp;
-    uint256 public withdrawalsPauseTimestamp;
 
     // Structs
     struct SavingsLock {
@@ -49,7 +44,14 @@ contract Cartridge is Initializable, UUPSUpgradeable {
         uint256 totalActiveLocks;
     }
 
-
+    // New: User Profile struct
+    struct UserProfile {
+        string username;
+        uint256 registrationDate;
+        bool isActive;
+        uint256 lastActivity;
+        string profileImageHash;
+    }
 
     // State variables
     uint256 private _lockIds;
@@ -67,7 +69,12 @@ contract Cartridge is Initializable, UUPSUpgradeable {
     // Mapping from user address to their active lock count and total amount
     mapping(address => UserLockInfo) public userLockInfo;
 
-    // Penalty pool for redistributing early withdrawal penalties
+    // New: User profile mapping
+    mapping(address => UserProfile) public userProfiles;
+    
+    // New: Username to address mapping (for unique usernames)
+    mapping(string => address) public usernameToAddress;
+
     PenaltyPool public penaltyPool;
 
     // Configuration
@@ -77,8 +84,6 @@ contract Cartridge is Initializable, UUPSUpgradeable {
     uint256 public constant MAX_LOCK_AMOUNT = 1000000 * 10 ** 18; // 1M cUSD max per lock
     uint256 public constant TIME_BUFFER = 300; // 5 minutes buffer for timestamp manipulation
     uint256 public constant MAX_USER_LOCKS = 20; // Maximum locks per user
-
-
 
     // Events
     event SavingsLocked(
@@ -110,15 +115,28 @@ contract Cartridge is Initializable, UUPSUpgradeable {
 
     event TokenUpdated(address indexed oldToken, address indexed newToken);
 
+    // New: User management events
+    event UserRegistered(
+        address indexed user,
+        string username,
+        uint256 registrationDate
+    );
 
+    event UserProfileUpdated(
+        address indexed user,
+        string username,
+        uint256 timestamp
+    );
+
+    event UserDeactivated(
+        address indexed user,
+        uint256 deactivationDate,
+        uint256 totalRefunded
+    );
 
     // Custom pause events
     event ContractPaused(address indexed pauser, uint256 timestamp);
     event ContractUnpaused(address indexed unpauser, uint256 timestamp);
-    event SavingsPaused(address indexed pauser, uint256 timestamp);
-    event SavingsUnpaused(address indexed unpauser, uint256 timestamp);
-    event WithdrawalsPaused(address indexed pauser, uint256 timestamp);
-    event WithdrawalsUnpaused(address indexed unpauser, uint256 timestamp);
 
     // Ownership events
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -130,6 +148,7 @@ contract Cartridge is Initializable, UUPSUpgradeable {
         _;
         locked = false;
     }
+
     // Modifiers
     modifier onlyLockOwner(uint256 lockId) {
         require(savingsLocks[lockId].owner == msg.sender, "Not the lock owner");
@@ -149,12 +168,7 @@ contract Cartridge is Initializable, UUPSUpgradeable {
         _;
     }
 
-    modifier validToken(address token) {
-        require(token != address(0), "Invalid token address");
-        // Basic ERC20 validation
-        require(IERC20(token).totalSupply() > 0, "Invalid token contract");
-        _;
-    }
+
 
     modifier withinUserLimits(address user) {
         require(
@@ -164,23 +178,43 @@ contract Cartridge is Initializable, UUPSUpgradeable {
         _;
     }
 
+    // New: User registration modifier
+    modifier userRegistered() {
+        require(userProfiles[msg.sender].isActive, "User not registered");
+        _;
+    }
+
+    // New: Username validation modifier
+    modifier validUsername(string memory username) {
+        require(bytes(username).length >= 3, "Username too short");
+        require(bytes(username).length <= 32, "Username too long");
+        require(usernameToAddress[username] == address(0), "Username already taken");
+        _;
+    }
+
     // Custom pause modifiers
     modifier whenNotPaused() {
         require(!isPaused, "Contract is paused");
         _;
     }
 
-    modifier whenSavingsNotPaused() {
-        require(!isSavingsPaused, "Savings operations are paused");
-        _;
+
+
+    /**
+     * @dev Constructor to initialize the contract
+     * @param _cUSDToken Address of the cUSD token
+     * @param initialOwner Address of the contract owner
+     */
+    constructor(address _cUSDToken, address initialOwner) {
+        require(initialOwner != address(0), "Invalid owner address");
+        require(_cUSDToken != address(0), "Invalid token address");
+
+        cUSDToken = IERC20(_cUSDToken);
+        _transferOwnership(initialOwner);
+
+        // Initialize pause state
+        isPaused = false;
     }
-
-    modifier whenWithdrawalsNotPaused() {
-        require(!isWithdrawalsPaused, "Withdrawal operations are paused");
-        _;
-    }
-
-
 
     /**
      * @dev Returns the address of the current owner.
@@ -216,28 +250,168 @@ contract Cartridge is Initializable, UUPSUpgradeable {
         emit OwnershipTransferred(oldOwner, newOwner);
     }
 
+    // New: User Registration Functions
+
     /**
-     * @dev Initialize the contract (replaces constructor for upgradeable contracts)
-     * @param _cUSDToken Address of the cUSD token
-     * @param initialOwner Address of the contract owner
+     * @dev Register a new user with username
+     * @param username Unique username for the user
+     * @param profileImageHash IPFS hash for profile image (optional)
      */
-    function initialize(
-        address _cUSDToken,
-        address initialOwner
-    ) external initializer {
-        require(initialOwner != address(0), "Invalid owner address");
+    function registerUser(
+        string memory username,
+        string memory profileImageHash
+    ) external validUsername(username) {
+        require(!userProfiles[msg.sender].isActive, "User already registered");
 
-        cUSDToken = IERC20(_cUSDToken);
-        _transferOwnership(initialOwner);
+        // Create user profile
+        UserProfile memory newProfile = UserProfile({
+            username: username,
+            registrationDate: block.timestamp,
+            isActive: true,
+            lastActivity: block.timestamp,
+            profileImageHash: profileImageHash
+        });
 
-        // Initialize pause states
-        isPaused = false;
-        isSavingsPaused = false;
-        isWithdrawalsPaused = false;
+        userProfiles[msg.sender] = newProfile;
+        usernameToAddress[username] = msg.sender;
+
+        // Initialize user lock info
+        userLockInfo[msg.sender] = UserLockInfo({
+            lockIds: new uint256[](0),
+            totalActiveAmount: 0,
+            totalActiveLocks: 0
+        });
+
+        emit UserRegistered(msg.sender, username, block.timestamp);
     }
 
     /**
-     * @dev Create a new savings lock
+     * @dev Update user profile information
+     * @param newUsername New username (must be unique)
+     * @param newProfileImageHash New profile image hash
+     */
+    function updateProfile(
+        string memory newUsername,
+        string memory newProfileImageHash
+    ) external userRegistered {
+        UserProfile storage profile = userProfiles[msg.sender];
+        
+        // If username is changing, validate it's unique
+        if (keccak256(bytes(profile.username)) != keccak256(bytes(newUsername))) {
+            require(usernameToAddress[newUsername] == address(0), "Username already taken");
+            require(bytes(newUsername).length >= 3, "Username too short");
+            require(bytes(newUsername).length <= 32, "Username too long");
+            
+            // Remove old username mapping
+            delete usernameToAddress[profile.username];
+            // Set new username mapping
+            usernameToAddress[newUsername] = msg.sender;
+            profile.username = newUsername;
+        }
+
+        if (bytes(newProfileImageHash).length > 0) {
+            profile.profileImageHash = newProfileImageHash;
+        }
+
+        profile.lastActivity = block.timestamp;
+
+        emit UserProfileUpdated(msg.sender, newUsername, block.timestamp);
+    }
+
+    /**
+     * @dev Emergency account deactivation - sends all funds back to user regardless of lock status
+     * This is a critical safety feature that allows users to exit the platform immediately
+     * Optimized to avoid N+1 queries by using cached user info
+     */
+    function deactivateAccount() external userRegistered reentrancyGuard {
+        UserProfile storage profile = userProfiles[msg.sender];
+        require(profile.isActive, "Account already deactivated");
+
+        // Get cached user info to avoid N+1 queries
+        UserLockInfo storage userInfo = userLockInfo[msg.sender];
+        uint256 totalRefunded = 0;
+
+        // Use the cached total active amount for immediate penalty pool update
+        uint256 userActiveAmount = userInfo.totalActiveAmount;
+        uint256 userActiveLocks = userInfo.totalActiveLocks;
+
+        // Process each lock and refund the full amount
+        uint256[] memory userLockIds = userLocks[msg.sender];
+        uint256[] memory activeLockIds = new uint256[](userActiveLocks);
+        uint256 activeIndex = 0;
+        
+        for (uint256 i = 0; i < userLockIds.length; i++) {
+            uint256 lockId = userLockIds[i];
+            SavingsLock storage lock = savingsLocks[lockId];
+            
+            if (lock.isActive && !lock.isWithdrawn) {
+                // Calculate penalty that would have been applied
+                uint256 penaltyAmount = 0;
+                if (block.timestamp < (lock.unlockTime - TIME_BUFFER)) {
+                    penaltyAmount = (lock.amount * EARLY_WITHDRAWAL_PENALTY) / 100;
+                }
+                
+                // Refund full amount (no penalty for emergency deactivation)
+                uint256 refundAmount = lock.amount;
+                totalRefunded += refundAmount;
+                
+                // Update lock status
+                lock.isActive = false;
+                lock.isWithdrawn = true;
+                lock.penaltyAmount = penaltyAmount; // Record what penalty would have been
+                
+                // Store active lock ID for efficient cleanup
+                activeLockIds[activeIndex] = lockId;
+                activeIndex++;
+            }
+        }
+
+        // Bulk update penalty pool using cached values (avoid N+1)
+        penaltyPool.totalActiveSavings -= userActiveAmount;
+        _activeSavingsCount -= userActiveLocks;
+
+        // Clear user data
+        string memory username = profile.username; // Cache username before deletion
+        delete userProfiles[msg.sender];
+        delete usernameToAddress[username];
+        delete userLocks[msg.sender];
+        delete userLockInfo[msg.sender];
+
+        // Transfer all refunded funds
+        if (totalRefunded > 0) {
+            cUSDToken.safeTransfer(msg.sender, totalRefunded);
+        }
+
+        emit UserDeactivated(msg.sender, block.timestamp, totalRefunded);
+        emit PenaltyPoolUpdated(penaltyPool.totalPenalties, penaltyPool.totalActiveSavings);
+    }
+
+    /**
+     * @dev Get user profile information
+     * @param user Address of the user
+     * @return User profile details
+     */
+    function getUserProfile(address user) external view returns (UserProfile memory) {
+        require(user != address(0), "Invalid user address");
+        return userProfiles[user];
+    }
+
+
+
+
+
+    /**
+     * @dev Check if a user is registered (gas-efficient check)
+     * @param user Address of the user
+     * @return True if user is registered and active
+     */
+    function isUserRegistered(address user) external view returns (bool) {
+        return userProfiles[user].isActive;
+    }
+
+
+    /**
+     * @dev Create a new savings lock (now requires user registration)
      * @param lockDuration Duration to lock funds (in seconds)
      * @param amount Amount of cUSD to lock
      */
@@ -248,7 +422,7 @@ contract Cartridge is Initializable, UUPSUpgradeable {
         external
         reentrancyGuard
         whenNotPaused
-        whenSavingsNotPaused
+        userRegistered
         withinUserLimits(msg.sender)
     {
         require(amount > 0, "Amount must be greater than 0");
@@ -291,6 +465,9 @@ contract Cartridge is Initializable, UUPSUpgradeable {
         // Update penalty pool
         penaltyPool.totalActiveSavings += amount;
 
+        // Update last activity
+        userProfiles[msg.sender].lastActivity = block.timestamp;
+
         emit SavingsLocked(
             lockId,
             msg.sender,
@@ -305,10 +482,8 @@ contract Cartridge is Initializable, UUPSUpgradeable {
         );
     }
 
-
-
     /**
-     * @dev Withdraw funds from a savings lock
+     * @dev Withdraw funds from a savings lock (now requires user registration)
      * @param lockId ID of the lock to withdraw from
      */
     function withdrawSavings(
@@ -317,7 +492,7 @@ contract Cartridge is Initializable, UUPSUpgradeable {
         external
         reentrancyGuard
         whenNotPaused
-        whenWithdrawalsNotPaused
+        userRegistered
         onlyLockOwner(lockId)
         lockExists(lockId)
         lockActive(lockId)
@@ -357,6 +532,9 @@ contract Cartridge is Initializable, UUPSUpgradeable {
 
         // Update penalty pool
         penaltyPool.totalActiveSavings -= lock.amount;
+
+        // Update last activity
+        userProfiles[msg.sender].lastActivity = block.timestamp;
 
         // Transfer cUSD to user (external call last)
         cUSDToken.safeTransfer(msg.sender, withdrawalAmount);
@@ -433,105 +611,49 @@ contract Cartridge is Initializable, UUPSUpgradeable {
         emit ContractUnpaused(msg.sender, block.timestamp);
     }
 
-    /**
-     * @dev Pause only savings operations
-     */
-    function pauseSavings() external onlyOwner {
-        require(!isSavingsPaused, "Savings are already paused");
-        isSavingsPaused = true;
-        savingsPauseTimestamp = block.timestamp;
-        emit SavingsPaused(msg.sender, block.timestamp);
-    }
-
-    /**
-     * @dev Unpause savings operations
-     */
-    function unpauseSavings() external onlyOwner {
-        require(isSavingsPaused, "Savings are not paused");
-        isSavingsPaused = false;
-        emit SavingsUnpaused(msg.sender, block.timestamp);
-    }
-
-
-
-    /**
-     * @dev Pause only withdrawal operations
-     */
-    function pauseWithdrawals() external onlyOwner {
-        require(!isWithdrawalsPaused, "Withdrawals are already paused");
-        isWithdrawalsPaused = true;
-        withdrawalsPauseTimestamp = block.timestamp;
-        emit WithdrawalsPaused(msg.sender, block.timestamp);
-    }
-
-    /**
-     * @dev Unpause withdrawal operations
-     */
-    function unpauseWithdrawals() external onlyOwner {
-        require(isWithdrawalsPaused, "Withdrawals are not paused");
-        isWithdrawalsPaused = false;
-        emit WithdrawalsUnpaused(msg.sender, block.timestamp);
-    }
 
     /**
      * @dev Get pause status information
      * @return generalPaused General pause status
-     * @return savingsPaused Savings pause status
-     * @return withdrawalsPaused Withdrawals pause status
      * @return generalPauseTime General pause timestamp
-     * @return savingsPauseTime Savings pause timestamp
-     * @return withdrawalsPauseTime Withdrawals pause timestamp
      */
     function getPauseStatus()
         external
         view
         returns (
             bool generalPaused,
-            bool savingsPaused,
-            bool withdrawalsPaused,
-            uint256 generalPauseTime,
-            uint256 savingsPauseTime,
-            uint256 withdrawalsPauseTime
+            uint256 generalPauseTime
         )
     {
         return (
             isPaused,
-            isSavingsPaused,
-            isWithdrawalsPaused,
-            pauseTimestamp,
-            savingsPauseTimestamp,
-            withdrawalsPauseTimestamp
+            pauseTimestamp
         );
     }
 
+
+
     /**
-     * @dev Get all locks for a user (optimized to prevent N+1)
+     * @dev Get all locks for a user with full details in one call
      * @param user Address of the user
-     * @return Array of lock IDs
+     * @return lockIds Array of all lock IDs for the user
+     * @return locks Array of complete lock details
      */
-    function getUserLocks(
+    function getUserLocksWithDetails(
         address user
-    ) external view returns (uint256[] memory) {
+    ) external view returns (uint256[] memory lockIds, SavingsLock[] memory locks) {
         require(user != address(0), "Invalid user address");
-        return userLocks[user];
+        
+        lockIds = userLocks[user];
+        locks = new SavingsLock[](lockIds.length);
+        
+        for (uint256 i = 0; i < lockIds.length; i++) {
+            locks[i] = savingsLocks[lockIds[i]];
+        }
     }
 
     /**
-     * @dev Get user lock info (optimized query)
-     * @param user Address of the user
-     * @return User lock information
-     */
-    function getUserLockInfo(
-        address user
-    ) external view returns (UserLockInfo memory) {
-        require(user != address(0), "Invalid user address");
-        return userLockInfo[user];
-    }
-
-
-
-    /**
-     * @dev Get lock details by ID
+     * @dev Get individual lock details by ID
      * @param lockId ID of the lock
      * @return Lock details
      */
@@ -572,26 +694,5 @@ contract Cartridge is Initializable, UUPSUpgradeable {
         return _activeSavingsCount;
     }
 
-    /**
-     * @dev Emergency function to recover stuck tokens (owner only)
-     * @param token Address of the token to recover
-     * @param amount Amount to recover
-     */
-    function emergencyRecoverTokens(
-        address token,
-        uint256 amount
-    ) external onlyOwner {
-        require(token != address(0), "Invalid token address");
-        require(token != address(cUSDToken), "Cannot recover cUSD tokens");
-        require(amount > 0, "Amount must be greater than 0");
-
-        IERC20(token).safeTransfer(owner(), amount);
-    }
-
-    /**
-     * @dev Required by the OZ UUPS module
-     */
-    function _authorizeUpgrade(
-        address newImplementation
-    ) internal override onlyOwner {}
+  
 }

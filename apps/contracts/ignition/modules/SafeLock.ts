@@ -1,10 +1,11 @@
 import { buildModule } from "@nomicfoundation/hardhat-ignition/modules";
-require("dotenv").config();
+import "dotenv/config";
 
 export default buildModule("SafeLock", (m) => {
-  // Celo cUSD token addresses - validate and format
-  const cUSD_ALFAJORES_ADDRESS = process.env.CUSD_ALFAJORES;
-  const INITIAL_OWNER = process.env.INITIAL_OWNER;
+  // Celo cUSD token address for Alfajores testnet
+  const cUSD_ALFAJORES_ADDRESS = "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1";
+  // Use the deployer as the initial owner
+  const INITIAL_OWNER = "0x82A326C204e0592457921B60cA2FB1Ec8e340c72"
 
   // Deploy the SafeLock contract with constructor parameters
   const SafeLock = m.contract("SafeLock", [

@@ -55,20 +55,22 @@ pnpm deploy:celo
    ```env
    PRIVATE_KEY=your_private_key_without_0x_prefix
    CELOSCAN_API_KEY=your_celoscan_api_key
+   CUSD_ALFAJORES=your_cusd_token_address
+   INITIAL_OWNER=your_owner_address
    ```
 
 ## 📁 Project Structure
 
 ```
 contracts/          # Smart contract source files
-├── Lock.sol        # Sample timelock contract
+├── Cartridge.sol   # Main savings platform contract
 
 test/              # Contract tests
-├── Lock.ts        # Tests for Lock contract
+├── Cartridge.ts   # Tests for Cartridge contract
 
 ignition/          # Deployment scripts
 └── modules/
-    └── Lock.ts    # Lock contract deployment
+    └── Cartridge.ts # Cartridge contract deployment
 
 hardhat.config.ts  # Hardhat configuration
 tsconfig.json      # TypeScript configuration

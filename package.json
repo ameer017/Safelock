@@ -1,37 +1,37 @@
 {
-  "name": "Cartridge",
-  "version": "0.1.0",
-  "description": "A decentralized contingency platform for savings, transfers, and swaps with time-locked discipline",
-  "private": true,
-  "scripts": {
-    "build": "turbo build",
-    "dev": "turbo dev",
-    "lint": "turbo lint",
-    "clean": "turbo clean",
-    "type-check": "turbo type-check",
-    "contracts:compile": "turbo run compile --filter=hardhat",
-    "contracts:test": "turbo run test --filter=hardhat",
-    "contracts:deploy": "turbo run deploy --filter=hardhat",
-    "contracts:deploy:alfajores": "turbo run deploy:alfajores --filter=hardhat",
-    "contracts:deploy:celo": "turbo run deploy:celo --filter=hardhat",
-    "commitlint": "commitlint --edit",
-    "prepare": "husky install"
-  },
-  "devDependencies": {
-    "@commitlint/cli": "^18.4.3",
-    "@commitlint/config-conventional": "^18.4.3",
-    "@types/node": "^20.8.0",
-    "husky": "^8.0.3",
-    "ts-node": "^10.9.2",
-    "turbo": "^1.10.16",
-    "typescript": "^5.2.2"
-  },
-  "packageManager": "pnpm@8.10.0",
-  "engines": {
-    "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
-  },
-  "dependencies": {
-    "@openzeppelin/contracts": "^5.4.0"
+    "name": "Cartridge",
+    "version": "0.1.0",
+    "description": "A decentralized contingency platform for savings with time-locked discipline",
+    "private": true,
+    "scripts": {
+      "build": "turbo build",
+      "dev": "turbo dev",
+      "lint": "turbo lint",
+      "clean": "turbo clean",
+      "type-check": "turbo type-check",
+      "contracts:compile": "turbo run compile --filter=hardhat",
+      "contracts:test": "turbo run test --filter=hardhat",
+      "contracts:deploy": "turbo run deploy --filter=hardhat",
+      "contracts:deploy:alfajores": "turbo run deploy:alfajores --filter=hardhat",
+      "contracts:deploy:celo": "turbo run deploy:celo --filter=hardhat",
+      "commitlint": "commitlint --edit",
+      "prepare": "husky install"
+    },
+    "devDependencies": {
+      "@commitlint/cli": "^18.4.3",
+      "@commitlint/config-conventional": "^18.4.3",
+      "@types/node": "^20.8.0",
+      "husky": "^8.0.3",
+      "ts-node": "^10.9.2",
+      "turbo": "^1.10.16",
+      "typescript": "^5.2.2"
+    },
+    "packageManager": "pnpm@8.10.0",
+    "engines": {
+      "node": ">=18.0.0",
+      "pnpm": ">=8.0.0"
+    },
+    "dependencies": {
+      "@openzeppelin/contracts": "^5.4.0"
+    }
   }
-}

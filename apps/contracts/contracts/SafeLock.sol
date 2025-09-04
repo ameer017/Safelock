@@ -371,8 +371,9 @@ contract SafeLock {
         _activeSavingsCount -= userActiveLocks;
 
         // Clear user data
+        string memory username = profile.username; // Cache username before deletion
         delete userProfiles[msg.sender];
-        delete usernameToAddress[profile.username];
+        delete usernameToAddress[username];
         delete userLocks[msg.sender];
         delete userLockInfo[msg.sender];
 

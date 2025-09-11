@@ -490,7 +490,6 @@ function DashboardContent() {
                 ) : (
                   <div className="space-y-4">
                     {locks.filter(lock => lock.isWithdrawn).map((lock) => {
-                      // const lockDate = new Date(Number(lock.lockTime) * 1000).toLocaleDateString()
                       const withdrawDate = new Date(Number(lock.unlockTime) * 1000).toLocaleDateString()
                       
                       return (

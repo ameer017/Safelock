@@ -12,9 +12,11 @@ import {
 } from "@/components/ui/sheet"
 
 import { WalletConnectButton } from "@/components/connect-button"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 const navLinks = [
   { name: "Home", href: "/" },
+  { name: "Dashboard", href: "/dashboard" },
   { name: "Docs", href: "https://docs.celo.org", external: true },
 ]
 
@@ -55,7 +57,11 @@ export function Navbar() {
                     {link.external && <ExternalLink className="h-4 w-4" />}
                   </Link>
                 ))}
-                <div className="mt-6 pt-6 border-t">
+                <div className="mt-6 pt-6 border-t space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Theme</span>
+                    <ThemeToggle />
+                  </div>
                   <WalletConnectButton />
                 </div>
               </nav>
@@ -91,6 +97,7 @@ export function Navbar() {
           ))}
           
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <WalletConnectButton />
           </div>
         </nav>

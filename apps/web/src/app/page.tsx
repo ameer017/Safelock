@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RegisterForm } from "@/components/register-form";
+import { RegisterForm } from "@/components/register-form-wrapper";
 import { Zap, Shield, Globe, Users } from "lucide-react";
 
 export default function Home() {
@@ -23,7 +23,7 @@ export default function Home() {
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
               Welcome to{" "}
               <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                cartridge
+                Safelock
               </span>
             </h1>
 
@@ -64,7 +64,7 @@ export default function Home() {
         <div className="container px-4 mx-auto max-w-7xl">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-              Why Choose Cartridge?
+              Why Choose Safelock?
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Built with modern web technologies and best practices for the best developer experience.

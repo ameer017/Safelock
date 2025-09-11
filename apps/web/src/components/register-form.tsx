@@ -4,33 +4,35 @@ import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi"
+import { SAFELOCK_CONTRACT } from "@/lib/contracts"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { User, Mail, Lock, CheckCircle, AlertCircle } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { User, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 
 const registerSchema = z.object({
   username: z.string()
     .min(3, "Username must be at least 3 characters")
-    .max(20, "Username must be less than 20 characters")
+    .max(32, "Username must be less than 32 characters")
     .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, "Password must contain at least one uppercase letter, one lowercase letter, and one number"),
-  confirmPassword: z.string()
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
+  profileImageHash: z.string().optional()
 })
 
 type RegisterFormData = z.infer<typeof registerSchema>
 
-export function RegisterForm() {
+export function RegisterFormInner() {
   const [isOpen, setIsOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const { address, isConnected } = useAccount()
+  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract()
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  })
 
   const {
     register,
@@ -44,32 +46,56 @@ export function RegisterForm() {
 
   const watchedUsername = watch("username")
 
-  // Simulate username availability check
+  // Check if user is already registered
+  const { data: isRegistered } = useReadContract({
+    address: SAFELOCK_CONTRACT.address,
+    abi: SAFELOCK_CONTRACT.abi,
+    functionName: "isUserRegistered",
+    args: address ? [address] : undefined
+  })
+
+  // Check username availability by calling the contract
   const checkUsernameAvailability = async (username: string) => {
     if (username.length < 3) {
       setUsernameAvailable(null)
       return
     }
     
-    // Simulate API call
+    // TODO: Implement proper username availability check
+    // This would require a view function in the contract to check usernameToAddress mapping
+    // For now, simulate the check
     await new Promise(resolve => setTimeout(resolve, 500))
     setUsernameAvailable(Math.random() > 0.3) // 70% chance of being available
   }
 
   const onSubmit = async (data: RegisterFormData) => {
-    setIsLoading(true)
+    if (!isConnected) {
+      setError("Please connect your wallet first")
+      return
+    }
+
+    setError(null)
+    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      console.log("Registration data:", data)
-      setIsOpen(false)
-      reset()
+      writeContract({
+        address: SAFELOCK_CONTRACT.address,
+        abi: SAFELOCK_CONTRACT.abi,
+        functionName: "registerUser",
+        args: [data.username, data.profileImageHash || ""]
+      })
     } catch (error) {
       console.error("Registration error:", error)
-    } finally {
-      setIsLoading(false)
+      setError("Failed to register user. Please try again.")
     }
   }
+
+  // Reset form when transaction is successful
+  if (isSuccess) {
+    setIsOpen(false)
+    reset()
+    setError(null)
+  }
+
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -80,12 +106,55 @@ export function RegisterForm() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            Create Account
+            Register on SafeLock
           </DialogTitle>
           <DialogDescription>
-            Join Cartridge and start your decentralized journey
+            Create your decentralized savings account on Celo
           </DialogDescription>
         </DialogHeader>
+        
+        {!isConnected && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Please connect your wallet to register on SafeLock
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {isConnected && isRegistered && (
+          <Alert>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              You are already registered on SafeLock! You can start saving now.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {writeError && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Transaction failed: {writeError.message}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {isSuccess && (
+          <Alert>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              Successfully registered! You can now start saving on SafeLock.
+            </AlertDescription>
+          </Alert>
+        )}
         
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
@@ -93,7 +162,7 @@ export function RegisterForm() {
             <div className="relative">
               <Input
                 id="username"
-                placeholder="Enter your username"
+                placeholder="Enter your username (3-32 characters)"
                 {...register("username", {
                   onChange: (e) => {
                     const username = e.target.value
@@ -105,6 +174,7 @@ export function RegisterForm() {
                   }
                 })}
                 className={errors.username ? "border-destructive" : ""}
+                disabled={isPending || isConfirming}
               />
               {watchedUsername && watchedUsername.length >= 3 && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -130,89 +200,44 @@ export function RegisterForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                className={`pl-10 ${errors.email ? "border-destructive" : ""}`}
-                {...register("email")}
-              />
-            </div>
-            {errors.email && (
-              <p className="text-sm text-destructive">{errors.email.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="password"
-                type="password"
-                placeholder="Create a password"
-                className={`pl-10 ${errors.password ? "border-destructive" : ""}`}
-                {...register("password")}
-              />
-            </div>
-            {errors.password && (
-              <p className="text-sm text-destructive">{errors.password.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="confirmPassword"
-                type="password"
-                placeholder="Confirm your password"
-                className={`pl-10 ${errors.confirmPassword ? "border-destructive" : ""}`}
-                {...register("confirmPassword")}
-              />
-            </div>
-            {errors.confirmPassword && (
-              <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
-            )}
+            <Label htmlFor="profileImageHash">Profile Image Hash (Optional)</Label>
+            <Input
+              id="profileImageHash"
+              placeholder="IPFS hash for your profile image"
+              {...register("profileImageHash")}
+              disabled={isPending || isConfirming}
+            />
+            <p className="text-xs text-muted-foreground">
+              Upload your image to IPFS and paste the hash here
+            </p>
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="terms"
-                className="rounded border-input"
-                required
-              />
-              <Label htmlFor="terms" className="text-sm">
-                I agree to the{" "}
-                <a href="#" className="text-primary hover:underline">
-                  Terms of Service
-                </a>{" "}
-                and{" "}
-                <a href="#" className="text-primary hover:underline">
-                  Privacy Policy
-                </a>
-              </Label>
+            <div className="text-sm text-muted-foreground">
+              <p>By registering, you agree to use SafeLock&apos;s decentralized savings platform.</p>
+              <p className="mt-1">Your wallet address: <code className="bg-muted px-1 rounded text-xs">{address}</code></p>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading || usernameAvailable === false}>
-              {isLoading ? "Creating Account..." : "Create Account"}
+            <Button 
+              type="submit" 
+              className="w-full" 
+              disabled={!isConnected || isPending || isConfirming || usernameAvailable === false || isRegistered}
+            >
+              {isPending || isConfirming ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isPending ? "Confirm in wallet..." : "Processing..."}
+                </>
+              ) : isRegistered ? (
+                "Already Registered"
+              ) : (
+                "Register on SafeLock"
+              )}
             </Button>
           </div>
         </form>
-
-        <div className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <a href="#" className="text-primary hover:underline">
-            Sign in
-          </a>
-        </div>
       </DialogContent>
     </Dialog>
   )
 }
+

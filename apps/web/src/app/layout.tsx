@@ -9,7 +9,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'cartridge',
+  title: 'Safelock',
   description: 'A new Celo blockchain project',
 };
 

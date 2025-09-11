@@ -1,7 +1,7 @@
 {
   "name": "hardhat",
   "version": "1.0.0",
-  "description": "Smart contracts for cartridge",
+  "description": "Smart contracts for Safelock",
   "main": "index.js",
   "scripts": {
     "build": "hardhat compile",

@@ -1,6 +1,6 @@
-# cartridge - Smart Contracts
+# Safelock - Smart Contracts
 
-This directory contains the smart contracts for cartridge, built with Hardhat and optimized for the Celo blockchain.
+This directory contains the smart contracts for Safelock, built with Hardhat and optimized for the Celo blockchain.
 
 ## 🚀 Quick Start
 
@@ -63,14 +63,14 @@ pnpm deploy:celo
 
 ```
 contracts/          # Smart contract source files
-├── Cartridge.sol   # Main savings platform contract
+├── Safelock.sol   # Main savings platform contract
 
 test/              # Contract tests
-├── Cartridge.ts   # Tests for Cartridge contract
+├── Safelock.ts   # Tests for Safelock contract
 
 ignition/          # Deployment scripts
 └── modules/
-    └── Cartridge.ts # Cartridge contract deployment
+    └── Safelock.ts # Safelock contract deployment
 
 hardhat.config.ts  # Hardhat configuration
 tsconfig.json      # TypeScript configuration

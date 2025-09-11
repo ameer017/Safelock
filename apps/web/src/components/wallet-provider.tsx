@@ -13,9 +13,17 @@ import { http } from 'wagmi'
 let config: any = null
 
 function getWagmiConfig() {
+  if (typeof window === 'undefined') {
+    // Return a minimal config for SSR
+    return {
+      chains: [celo, celoAlfajores],
+      transports: {},
+    }
+  }
+  
   if (!config) {
     config = getDefaultConfig({
-      appName: 'cartridge',
+      appName: 'Safelock',
       projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID',
       chains: [celo, celoAlfajores],
       transports: {

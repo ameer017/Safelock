@@ -4,18 +4,12 @@
   "outputDirectory": "apps/web/.next",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": "nextjs",
-  "rootDirectory": "apps/web",
   "env": {
     "NODE_ENV": "production"
   },
   "build": {
     "env": {
       "NODE_ENV": "production"
-    }
-  },
-  "functions": {
-    "apps/web/src/app/**/*.tsx": {
-      "runtime": "nodejs18.x"
     }
   }
 }

@@ -1,66 +1,73 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { useAccount, useReadContract } from "wagmi"
-import { Button } from "../../components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
-import { Badge } from "../../components/ui/badge"
-import { Progress } from "../../components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs"
-import { Avatar, AvatarFallback } from "../../components/ui/avatar"
-import { Alert, AlertDescription } from "../../components/ui/alert"
-import { Skeleton } from "../../components/ui/skeleton"
-import { CreateLockModal } from "../../components/create-lock-modal"
-import { SAFELOCK_CONTRACT } from "../../lib/contracts"
-import { 
-  TrendingUp, 
-  DollarSign, 
-  Target, 
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAccount, useReadContract } from "wagmi";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import { Progress } from "../../components/ui/progress";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs";
+import { Avatar, AvatarFallback } from "../../components/ui/avatar";
+import { Alert, AlertDescription } from "../../components/ui/alert";
+import { Skeleton } from "../../components/ui/skeleton";
+import { CreateLockModal } from "../../components/create-lock-modal";
+import { SAFELOCK_CONTRACT } from "../../lib/contracts";
+import {
+  TrendingUp,
+  DollarSign,
+  Target,
   Calendar,
   Plus,
   Minus,
   History,
   AlertCircle,
-  Loader2
-} from "lucide-react"
+  Loader2,
+} from "lucide-react";
 
 function DashboardContent() {
-  const router = useRouter()
-  const { address, isConnected } = useAccount()
+  const router = useRouter();
+  const { address, isConnected } = useAccount();
 
-  // Check if user is registered
-  const { data: isRegistered, isLoading: isCheckingRegistration } = useReadContract({
-    address: SAFELOCK_CONTRACT.address,
-    abi: SAFELOCK_CONTRACT.abi,
-    functionName: "isUserRegistered",
-    args: address ? [address] : undefined
-  })
+  const { data: isRegistered, isLoading: isCheckingRegistration } =
+    useReadContract({
+      address: SAFELOCK_CONTRACT.address,
+      abi: SAFELOCK_CONTRACT.abi,
+      functionName: "isUserRegistered",
+      args: address ? [address] : undefined,
+    });
 
-  // Get user profile
   const { data: userProfile, isLoading: isLoadingProfile } = useReadContract({
     address: SAFELOCK_CONTRACT.address,
     abi: SAFELOCK_CONTRACT.abi,
     functionName: "getUserProfile",
-    args: address ? [address] : undefined
-  })
+    args: address ? [address] : undefined,
+  });
 
-  // Get user's savings locks
   const { data: userLocks, isLoading: isLoadingLocks } = useReadContract({
     address: SAFELOCK_CONTRACT.address,
     abi: SAFELOCK_CONTRACT.abi,
     functionName: "getUserLocksWithDetails",
-    args: address ? [address] : undefined
-  })
+    args: address ? [address] : undefined,
+  });
 
-  // Redirect unregistered users
   useEffect(() => {
     if (isConnected && !isCheckingRegistration && isRegistered === false) {
-      router.push('/')
+      router.push("/");
     }
-  }, [isConnected, isCheckingRegistration, isRegistered, router])
+  }, [isConnected, isCheckingRegistration, isRegistered, router]);
 
-  // Show loading state
   if (!isConnected) {
     return (
       <main className="flex-1 p-6">
@@ -73,7 +80,7 @@ function DashboardContent() {
           </Alert>
         </div>
       </main>
-    )
+    );
   }
 
   if (isCheckingRegistration || isLoadingProfile) {
@@ -88,7 +95,7 @@ function DashboardContent() {
           </div>
         </div>
       </main>
-    )
+    );
   }
 
   if (!isRegistered) {
@@ -98,30 +105,45 @@ function DashboardContent() {
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              You need to register on SafeLock to access the dashboard. Please register first.
+              You need to register on SafeLock to access the dashboard. Please
+              register first.
             </AlertDescription>
           </Alert>
         </div>
       </main>
-    )
+    );
   }
 
-  
-  const locks = userLocks?.[1] || []
-  const activeLocks = locks.filter((lock: any) => lock.isActive && !lock.isWithdrawn)
-  const totalActiveAmount = activeLocks.reduce((sum: number, lock: any) => sum + Number(lock.amount), 0)
-  const totalActiveLocks = activeLocks.length
-  const totalWithdrawn = locks.filter((lock: any) => lock.isWithdrawn).reduce((sum: number, lock: any) => sum + Number(lock.amount), 0)
-  const totalPenalties = locks.reduce((sum: number, lock: any) => sum + Number(lock.penaltyAmount), 0)
+  console.log({ isRegistered });
+
+  const locks = userLocks?.[1] || [];
+  const activeLocks = locks.filter(
+    (lock: any) => lock.isActive && !lock.isWithdrawn
+  );
+  const totalActiveAmount = activeLocks.reduce(
+    (sum: number, lock: any) => sum + Number(lock.amount),
+    0
+  );
+  const totalActiveLocks = activeLocks.length;
+  const totalWithdrawn = locks
+    .filter((lock: any) => lock.isWithdrawn)
+    .reduce((sum: number, lock: any) => sum + Number(lock.amount), 0);
+  const totalPenalties = locks.reduce(
+    (sum: number, lock: any) => sum + Number(lock.penaltyAmount),
+    0
+  );
 
   return (
     <main className="flex-1 p-6">
       <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Savings Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Savings Dashboard
+          </h1>
           <p className="text-muted-foreground">
-            Welcome back, {userProfile?.username || 'User'}! Manage your savings and track your progress.
+            Welcome back, {userProfile?.username || "User"}! Manage your savings
+            and track your progress.
           </p>
         </div>
 
@@ -129,7 +151,9 @@ function DashboardContent() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Savings</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Active Savings
+              </CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -138,10 +162,14 @@ function DashboardContent() {
               ) : (
                 <>
                   <div className="text-2xl font-bold">
-                    ${(totalActiveAmount / 1e18).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    $
+                    {(totalActiveAmount / 1e18).toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {totalActiveLocks} active lock{totalActiveLocks !== 1 ? 's' : ''}
+                    {totalActiveLocks} active lock
+                    {totalActiveLocks !== 1 ? "s" : ""}
                   </p>
                 </>
               )}
@@ -150,7 +178,9 @@ function DashboardContent() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Withdrawn</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Total Withdrawn
+              </CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -159,10 +189,17 @@ function DashboardContent() {
               ) : (
                 <>
                   <div className="text-2xl font-bold">
-                    ${(totalWithdrawn / 1e18).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    $
+                    {(totalWithdrawn / 1e18).toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    From {locks.filter((lock: any) => lock.isWithdrawn).length} withdrawal{locks.filter((lock: any) => lock.isWithdrawn).length !== 1 ? 's' : ''}
+                    From {locks.filter((lock: any) => lock.isWithdrawn).length}{" "}
+                    withdrawal
+                    {locks.filter((lock: any) => lock.isWithdrawn).length !== 1
+                      ? "s"
+                      : ""}
                   </p>
                 </>
               )}
@@ -181,7 +218,8 @@ function DashboardContent() {
                 <>
                   <div className="text-2xl font-bold">{locks.length}</div>
                   <p className="text-xs text-muted-foreground">
-                    {activeLocks.length} active, {locks.length - activeLocks.length} completed
+                    {activeLocks.length} active,{" "}
+                    {locks.length - activeLocks.length} completed
                   </p>
                 </>
               )}
@@ -190,7 +228,9 @@ function DashboardContent() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Penalties Paid</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Penalties Paid
+              </CardTitle>
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -199,7 +239,10 @@ function DashboardContent() {
               ) : (
                 <>
                   <div className="text-2xl font-bold">
-                    ${(totalPenalties / 1e18).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    $
+                    {(totalPenalties / 1e18).toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Early withdrawal penalties
@@ -231,36 +274,62 @@ function DashboardContent() {
                 ) : activeLocks.length === 0 ? (
                   <div className="text-center py-8">
                     <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Active Savings</h3>
+                    <h3 className="text-lg font-semibold mb-2">
+                      No Active Savings
+                    </h3>
                     <p className="text-muted-foreground mb-4">
                       You don&apos;t have any active savings locks yet.
                     </p>
-                    <CreateLockModal>
-                      <Button>
-                        <Plus className="mr-2 h-4 w-4" />
-                        Create Your First Lock
-                      </Button>
-                    </CreateLockModal>
+                    {isRegistered && (
+                      <CreateLockModal>
+                        <Button>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create Your First Lock
+                        </Button>
+                      </CreateLockModal>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-6">
                     <div className="space-y-4">
                       {activeLocks.map((lock: any) => {
-                        const lockDuration = Number(lock.unlockTime) - Number(lock.lockTime)
-                        const timeRemaining = Number(lock.unlockTime) - Math.floor(Date.now() / 1000)
-                        const progressPercent = Math.max(0, Math.min(100, ((lockDuration - timeRemaining) / lockDuration) * 100))
-                        
+                        const lockDuration =
+                          Number(lock.unlockTime) - Number(lock.lockTime);
+                        const timeRemaining =
+                          Number(lock.unlockTime) -
+                          Math.floor(Date.now() / 1000);
+                        const progressPercent = Math.max(
+                          0,
+                          Math.min(
+                            100,
+                            ((lockDuration - timeRemaining) / lockDuration) *
+                              100
+                          )
+                        );
+
                         return (
                           <div key={lock.id} className="p-4 border rounded-lg">
                             <div className="flex justify-between items-start mb-2">
                               <div>
-                                <h4 className="font-semibold">Lock #{lock.id}</h4>
+                                <h4 className="font-semibold">
+                                  Lock #{lock.id}
+                                </h4>
                                 <p className="text-sm text-muted-foreground">
-                                  Amount: ${(Number(lock.amount) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                  Amount: $
+                                  {(Number(lock.amount) / 1e18).toLocaleString(
+                                    undefined,
+                                    { maximumFractionDigits: 2 }
+                                  )}
                                 </p>
                               </div>
-                              <Badge variant={timeRemaining > 0 ? "default" : "secondary"}>
-                                {timeRemaining > 0 ? "Active" : "Ready to Withdraw"}
+                              <Badge
+                                variant={
+                                  timeRemaining > 0 ? "default" : "secondary"
+                                }
+                              >
+                                {timeRemaining > 0
+                                  ? "Active"
+                                  : "Ready to Withdraw"}
                               </Badge>
                             </div>
                             <div className="space-y-2">
@@ -268,16 +337,20 @@ function DashboardContent() {
                                 <span>Progress</span>
                                 <span>{Math.round(progressPercent)}%</span>
                               </div>
-                              <Progress value={progressPercent} className="h-2" />
+                              <Progress
+                                value={progressPercent}
+                                className="h-2"
+                              />
                               <p className="text-xs text-muted-foreground">
-                                {timeRemaining > 0 
-                                  ? `Unlocks in ${Math.ceil(timeRemaining / (24 * 60 * 60))} days`
-                                  : "Ready for withdrawal"
-                                }
+                                {timeRemaining > 0
+                                  ? `Unlocks in ${Math.ceil(
+                                      timeRemaining / (24 * 60 * 60)
+                                    )} days`
+                                  : "Ready for withdrawal"}
                               </p>
                             </div>
                           </div>
-                        )
+                        );
                       })}
                     </div>
                   </div>
@@ -291,9 +364,7 @@ function DashboardContent() {
             <Card>
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>
-                  Manage your savings account
-                </CardDescription>
+                <CardDescription>Manage your savings account</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Button className="w-full justify-start" variant="outline">
@@ -311,9 +382,12 @@ function DashboardContent() {
               <CardContent>
                 <div className="text-center py-8">
                   <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Recent Activity</h3>
+                  <h3 className="text-lg font-semibold mb-2">
+                    No Recent Activity
+                  </h3>
                   <p className="text-muted-foreground">
-                    Your recent activity will appear here once you start using SafeLock.
+                    Your recent activity will appear here once you start using
+                    SafeLock.
                   </p>
                 </div>
               </CardContent>
@@ -340,7 +414,10 @@ function DashboardContent() {
                 {isLoadingLocks ? (
                   <div className="space-y-4">
                     {[...Array(3)].map((_, i) => (
-                      <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-4 border rounded-lg"
+                      >
                         <div className="flex items-center space-x-4">
                           <Skeleton className="h-10 w-10 rounded-full" />
                           <div className="space-y-2">
@@ -358,30 +435,46 @@ function DashboardContent() {
                 ) : locks.length === 0 ? (
                   <div className="text-center py-8">
                     <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Transactions Yet</h3>
+                    <h3 className="text-lg font-semibold mb-2">
+                      No Transactions Yet
+                    </h3>
                     <p className="text-muted-foreground">
-                      Your transaction history will appear here once you create your first savings lock.
+                      Your transaction history will appear here once you create
+                      your first savings lock.
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {locks.map((lock) => {
-                      const lockDate = new Date(Number(lock.lockTime) * 1000).toLocaleDateString()
-                      const isActive = lock.isActive && !lock.isWithdrawn
-                      const isCompleted = lock.isWithdrawn
-                      
+                      const lockDate = new Date(
+                        Number(lock.lockTime) * 1000
+                      ).toLocaleDateString();
+                      const isActive = lock.isActive && !lock.isWithdrawn;
+                      const isCompleted = lock.isWithdrawn;
+
                       return (
-                        <div key={lock.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div
+                          key={lock.id}
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                        >
                           <div className="flex items-center space-x-4">
                             <Avatar className="h-10 w-10">
-                              <AvatarFallback className={
-                                isActive ? "bg-green-100 text-green-600" :
-                                isCompleted ? "bg-blue-100 text-blue-600" :
-                                "bg-gray-100 text-gray-600"
-                              }>
-                                {isActive ? <Target className="h-4 w-4" /> :
-                                 isCompleted ? <TrendingUp className="h-4 w-4" /> :
-                                 <Minus className="h-4 w-4" />}
+                              <AvatarFallback
+                                className={
+                                  isActive
+                                    ? "bg-green-100 text-green-600"
+                                    : isCompleted
+                                    ? "bg-blue-100 text-blue-600"
+                                    : "bg-gray-100 text-gray-600"
+                                }
+                              >
+                                {isActive ? (
+                                  <Target className="h-4 w-4" />
+                                ) : isCompleted ? (
+                                  <TrendingUp className="h-4 w-4" />
+                                ) : (
+                                  <Minus className="h-4 w-4" />
+                                )}
                               </AvatarFallback>
                             </Avatar>
                             <div>
@@ -393,25 +486,37 @@ function DashboardContent() {
                           </div>
                           <div className="text-right">
                             <p className="font-medium">
-                              ${(Number(lock.amount) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                              $
+                              {(Number(lock.amount) / 1e18).toLocaleString(
+                                undefined,
+                                { maximumFractionDigits: 2 }
+                              )}
                             </p>
-                            <Badge variant={
-                              isActive ? "default" :
-                              isCompleted ? "secondary" :
-                              "outline"
-                            } className="text-xs">
-                              {isActive ? "Active" :
-                               isCompleted ? "Withdrawn" :
-                               "Inactive"}
+                            <Badge
+                              variant={
+                                isActive
+                                  ? "default"
+                                  : isCompleted
+                                  ? "secondary"
+                                  : "outline"
+                              }
+                              className="text-xs"
+                            >
+                              {isActive
+                                ? "Active"
+                                : isCompleted
+                                ? "Withdrawn"
+                                : "Inactive"}
                             </Badge>
                             {lock.penaltyAmount > 0 && (
                               <p className="text-xs text-red-600 mt-1">
-                                Penalty: ${(Number(lock.penaltyAmount) / 1e18).toFixed(2)}
+                                Penalty: $
+                                {(Number(lock.penaltyAmount) / 1e18).toFixed(2)}
                               </p>
                             )}
                           </div>
                         </div>
-                      )
+                      );
                     })}
                   </div>
                 )}
@@ -426,19 +531,28 @@ function DashboardContent() {
                 ) : activeLocks.length === 0 ? (
                   <div className="text-center py-8">
                     <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Active Locks</h3>
+                    <h3 className="text-lg font-semibold mb-2">
+                      No Active Locks
+                    </h3>
                     <p className="text-muted-foreground">
-                      You don&apos;t have any active savings locks at the moment.
+                      You don&apos;t have any active savings locks at the
+                      moment.
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {activeLocks.map((lock) => {
-                      const lockDate = new Date(Number(lock.lockTime) * 1000).toLocaleDateString()
-                      const timeRemaining = Number(lock.unlockTime) - Math.floor(Date.now() / 1000)
-                      
+                      const lockDate = new Date(
+                        Number(lock.lockTime) * 1000
+                      ).toLocaleDateString();
+                      const timeRemaining =
+                        Number(lock.unlockTime) - Math.floor(Date.now() / 1000);
+
                       return (
-                        <div key={lock.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div
+                          key={lock.id}
+                          className="flex items-center justify-between p-4 border rounded-lg"
+                        >
                           <div className="flex items-center space-x-4">
                             <Avatar className="h-10 w-10">
                               <AvatarFallback className="bg-green-100 text-green-600">
@@ -454,20 +568,27 @@ function DashboardContent() {
                           </div>
                           <div className="text-right">
                             <p className="font-medium">
-                              ${(Number(lock.amount) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                              $
+                              {(Number(lock.amount) / 1e18).toLocaleString(
+                                undefined,
+                                { maximumFractionDigits: 2 }
+                              )}
                             </p>
                             <Badge variant="default" className="text-xs">
-                              {timeRemaining > 0 ? "Active" : "Ready to Withdraw"}
+                              {timeRemaining > 0
+                                ? "Active"
+                                : "Ready to Withdraw"}
                             </Badge>
                             <p className="text-xs text-muted-foreground mt-1">
-                              {timeRemaining > 0 
-                                ? `Unlocks in ${Math.ceil(timeRemaining / (24 * 60 * 60))} days`
-                                : "Ready for withdrawal"
-                              }
+                              {timeRemaining > 0
+                                ? `Unlocks in ${Math.ceil(
+                                    timeRemaining / (24 * 60 * 60)
+                                  )} days`
+                                : "Ready for withdrawal"}
                             </p>
                           </div>
                         </div>
-                      )
+                      );
                     })}
                   </div>
                 )}
@@ -479,50 +600,66 @@ function DashboardContent() {
                       <Skeleton key={i} className="h-16 w-full" />
                     ))}
                   </div>
-                ) : locks.filter(lock => lock.isWithdrawn).length === 0 ? (
+                ) : locks.filter((lock) => lock.isWithdrawn).length === 0 ? (
                   <div className="text-center py-8">
                     <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No Completed Locks</h3>
+                    <h3 className="text-lg font-semibold mb-2">
+                      No Completed Locks
+                    </h3>
                     <p className="text-muted-foreground">
                       Your completed withdrawals will appear here.
                     </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {locks.filter(lock => lock.isWithdrawn).map((lock) => {
-                      const withdrawDate = new Date(Number(lock.unlockTime) * 1000).toLocaleDateString()
-                      
-                      return (
-                        <div key={lock.id} className="flex items-center justify-between p-4 border rounded-lg">
-                          <div className="flex items-center space-x-4">
-                            <Avatar className="h-10 w-10">
-                              <AvatarFallback className="bg-blue-100 text-blue-600">
-                                <TrendingUp className="h-4 w-4" />
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">Lock #{lock.id}</p>
-                              <p className="text-sm text-muted-foreground">
-                                Withdrawn: {withdrawDate}
+                    {locks
+                      .filter((lock) => lock.isWithdrawn)
+                      .map((lock) => {
+                        const withdrawDate = new Date(
+                          Number(lock.unlockTime) * 1000
+                        ).toLocaleDateString();
+
+                        return (
+                          <div
+                            key={lock.id}
+                            className="flex items-center justify-between p-4 border rounded-lg"
+                          >
+                            <div className="flex items-center space-x-4">
+                              <Avatar className="h-10 w-10">
+                                <AvatarFallback className="bg-blue-100 text-blue-600">
+                                  <TrendingUp className="h-4 w-4" />
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-medium">Lock #{lock.id}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Withdrawn: {withdrawDate}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium">
+                                $
+                                {(Number(lock.amount) / 1e18).toLocaleString(
+                                  undefined,
+                                  { maximumFractionDigits: 2 }
+                                )}
                               </p>
+                              <Badge variant="secondary" className="text-xs">
+                                Withdrawn
+                              </Badge>
+                              {lock.penaltyAmount > 0 && (
+                                <p className="text-xs text-red-600 mt-1">
+                                  Penalty: $
+                                  {(Number(lock.penaltyAmount) / 1e18).toFixed(
+                                    2
+                                  )}
+                                </p>
+                              )}
                             </div>
                           </div>
-                          <div className="text-right">
-                            <p className="font-medium">
-                              ${(Number(lock.amount) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                            </p>
-                            <Badge variant="secondary" className="text-xs">
-                              Withdrawn
-                            </Badge>
-                            {lock.penaltyAmount > 0 && (
-                              <p className="text-xs text-red-600 mt-1">
-                                Penalty: ${(Number(lock.penaltyAmount) / 1e18).toFixed(2)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
+                        );
+                      })}
                   </div>
                 )}
               </TabsContent>
@@ -531,15 +668,15 @@ function DashboardContent() {
         </Card>
       </div>
     </main>
-  )
+  );
 }
 
 export default function Dashboard() {
-  const [mounted, setMounted] = useState(false)
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   if (!mounted) {
     return (
@@ -553,8 +690,8 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
-    )
+    );
   }
 
-  return <DashboardContent />
+  return <DashboardContent />;
 }

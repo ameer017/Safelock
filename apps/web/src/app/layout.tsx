@@ -2,15 +2,16 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 
-import { Navbar } from '@/components/navbar';
-import { WalletProvider } from "@/components/wallet-provider"
-import { ThemeProvider } from "@/components/theme-provider"
+import { Navbar } from '../components/navbar';
+import { WalletProvider } from "../components/wallet-provider"
+import { ThemeProvider } from "../components/theme-provider"
+import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Safelock',
-  description: 'A new Celo blockchain project',
+  description: 'Save smarter. Spend wiser',
 };
 
 export default function RootLayout({
@@ -34,6 +35,7 @@ export default function RootLayout({
                 {children}
               </main>
             </div>
+            <Toaster />
           </WalletProvider>
         </ThemeProvider>
       </body>

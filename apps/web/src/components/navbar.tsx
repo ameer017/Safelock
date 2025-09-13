@@ -4,19 +4,20 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Menu, ExternalLink } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "./ui/button"
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
-} from "@/components/ui/sheet"
+} from "./ui/sheet"
 
-import { WalletConnectButton } from "@/components/connect-button"
-import { ThemeToggle } from "@/components/theme-toggle"
+import { WalletConnectButton } from "./connect-button"
+import { ThemeToggle } from "./theme-toggle"
 
 const navLinks = [
   { name: "Home", href: "/" },
   { name: "Dashboard", href: "/dashboard" },
+  { name: "Profile", href: "/profile" },
   { name: "Docs", href: "https://docs.celo.org", external: true },
 ]
 

@@ -1,7 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { Button } from "@/components/ui/button"
+import { Button } from "./ui/button"
 
 const RegisterFormInner = dynamic(() => import("./register-form").then(mod => ({ default: mod.RegisterFormInner })), {
   ssr: false,

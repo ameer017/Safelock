@@ -1,14 +1,12 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RegisterForm } from "@/components/register-form-wrapper";
+import { Button } from "../components/ui/button";
+import { Card, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Zap, Shield, Globe, Users } from "lucide-react";
+import { ConditionalRegisterForm } from "../components/conditional-register-form";
 
 export default function Home() {
   return (
     <main className="flex-1">
-      {/* Hero Section */}
       <section className="relative py-20 lg:py-32 overflow-hidden">
-        {/* Background gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
         
         <div className="container px-4 mx-auto max-w-7xl relative">
@@ -19,7 +17,6 @@ export default function Home() {
               Built on Celo
             </div>
 
-            {/* Main Heading */}
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
               Welcome to{" "}
               <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
@@ -27,20 +24,14 @@ export default function Home() {
               </span>
             </h1>
 
-            {/* Subtitle */}
             <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
               Start building your decentralized application on Celo. Fast and secure blockchain for everyone.
             </p>
 
-            {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-              <RegisterForm />
-              <Button variant="outline" size="lg" className="px-8 py-3 text-base font-medium">
-                Learn More
-              </Button>
+              <ConditionalRegisterForm />
             </div>
 
-            {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto">
               <div className="text-center">
                 <div className="text-3xl font-bold text-primary mb-2">100%</div>
@@ -59,7 +50,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Section */}
       <section className="py-20 lg:py-32">
         <div className="container px-4 mx-auto max-w-7xl">
           <div className="text-center mb-16">
@@ -111,7 +101,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Section */}
       <section className="py-20 lg:py-32 bg-muted/50">
         <div className="container px-4 mx-auto max-w-4xl">
           <div className="text-center">
@@ -122,7 +111,7 @@ export default function Home() {
               Connect your wallet and start building on Celo today.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <RegisterForm />
+              <ConditionalRegisterForm />
               <Button variant="outline" size="lg" className="px-8 py-3 text-base font-medium">
                 View Documentation
               </Button>

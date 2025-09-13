@@ -1,7 +1,7 @@
 // Contract configuration for SafeLock
 export const SAFELOCK_CONTRACT = {
   
-  address: "0x90A7E63827C9870CEAAFCcA9D92726fF45DBD9b9" as `0x${string}`,
+  address: "0x8a300e0FBA80d83C3935EEC65233Cdf4D970972d" as `0x${string}`,
   
   "abi": [
     {
@@ -680,6 +680,25 @@ export const SAFELOCK_CONTRACT = {
         }
       ],
       "name": "isUserRegistered",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "username",
+          "type": "string"
+        }
+      ],
+      "name": "isUsernameAvailable",
       "outputs": [
         {
           "internalType": "bool",

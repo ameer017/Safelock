@@ -1,137 +1,150 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useWriteContract, useWaitForTransactionReceipt } from "wagmi"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { SAFELOCK_CONTRACT } from "@/lib/contracts"
-import { Plus, Loader2, AlertCircle } from "lucide-react"
+import { useState, useEffect } from "react";
+import {
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from "wagmi";
+import { Button } from "./ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Alert, AlertDescription } from "./ui/alert";
+import { SAFELOCK_CONTRACT } from "../lib/contracts";
+import { Plus, Loader2, AlertCircle } from "lucide-react";
 
 interface CreateLockModalProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
-// Helper function to calculate duration in seconds between two dates
 const calculateDuration = (startDate: string, endDate: string): number => {
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-  const diffInMs = end.getTime() - start.getTime()
-  return Math.floor(diffInMs / 1000) // Convert to seconds
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const diffInMs = end.getTime() - start.getTime();
+  return Math.floor(diffInMs / 1000);
 }
 
-// Helper function to format date for input
 const formatDateForInput = (date: Date): string => {
-  return date.toISOString().split('T')[0]
-}
+  return date.toISOString().split("T")[0];
+};
 
 export function CreateLockModal({ children }: CreateLockModalProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [amount, setAmount] = useState("")
-  const [startDate, setStartDate] = useState("")
-  const [endDate, setEndDate] = useState("")
-  const [error, setError] = useState("")
-  const [mounted, setMounted] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [error, setError] = useState("");
+  const [mounted, setMounted] = useState(false);
 
-  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract()
-  
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-    hash,
-  })
+  const { writeContract, data: hash, isPending } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } =
+    useWaitForTransactionReceipt({
+      hash,
+    });
+
 
   useEffect(() => {
-    setMounted(true)
+    setMounted(true);
     // Set default start date to today
-    setStartDate(formatDateForInput(new Date()))
-  }, [])
+    setStartDate(formatDateForInput(new Date()));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
+    e.preventDefault();
+    setError("");
 
     if (!amount || !startDate || !endDate) {
-      setError("Please fill in all fields")
-      return
+      setError("Please fill in all fields");
+      return;
     }
 
     // Validate dates
-    const start = new Date(startDate)
-    const end = new Date(endDate)
-    const today = new Date()
-    today.setHours(0, 0, 0, 0) // Reset time to start of day for comparison
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
 
     if (start < today) {
-      setError("Start date cannot be in the past")
-      return
+      setError("Start date cannot be in the past");
+      return;
     }
 
     if (end <= start) {
-      setError("End date must be after start date")
-      return
+      setError("End date must be after start date");
+      return;
     }
 
-    // Calculate duration
-    const durationInSeconds = calculateDuration(startDate, endDate)
-    const minDuration = 24 * 60 * 60 // 1 day in seconds
-    const maxDuration = 365 * 24 * 60 * 60 // 1 year in seconds
+    const durationInSeconds = calculateDuration(startDate, endDate);
+    const minDuration = 24 * 60 * 60;
+    const maxDuration = 365 * 24 * 60 * 60;
 
     if (durationInSeconds < minDuration) {
-      setError("Lock duration must be at least 1 day")
-      return
+      setError("Lock duration must be at least 1 day");
+      return;
     }
 
     if (durationInSeconds > maxDuration) {
-      setError("Lock duration cannot exceed 1 year")
-      return
+      setError("Lock duration cannot exceed 1 year");
+      return;
     }
 
-    const amountInWei = BigInt(parseFloat(amount) * 1e18)
+    const amountInWei = BigInt(parseFloat(amount) * 1e18);
+
+ 
 
     try {
-      writeContract({
+      await writeContract({
         address: SAFELOCK_CONTRACT.address,
         abi: SAFELOCK_CONTRACT.abi,
         functionName: "createSavingsLock",
         args: [BigInt(durationInSeconds), amountInWei],
-      })
-    } catch {
-      setError("Failed to create lock. Please try again.")
+      });
+      
+     
+    } catch (error) {
+      console.error("❌ Failed to create lock:", error);
+      setError(`Failed to create lock: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
-  }
+  };
 
   const handleOpenChange = (open: boolean) => {
     if (!isPending && !isConfirming) {
-      setIsOpen(open)
+      setIsOpen(open);
       if (!open) {
-        setAmount("")
-        setStartDate(formatDateForInput(new Date()))
-        setEndDate("")
-        setError("")
+        setAmount("");
+        setStartDate(formatDateForInput(new Date()));
+        setEndDate("");
+        setError("");
       }
     }
-  }
+  };
 
-  const isProcessing = isPending || isConfirming
+  const isProcessing = isPending || isConfirming;
 
   if (!mounted) {
-    return <>{children}</>
+    return <>{children}</>;
   }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+      <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create New Savings Lock</DialogTitle>
           <DialogDescription>
-            Lock your cUSD tokens for a specified duration to earn rewards and build discipline.
+            Lock your cUSD tokens for a specified duration to earn rewards and
+            build discipline.
           </DialogDescription>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="amount">Amount (cUSD)</Label>
@@ -180,10 +193,15 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
           {startDate && endDate && (
             <div className="p-3 bg-muted rounded-lg">
               <p className="text-sm font-medium">
-                Lock Duration: {Math.ceil(calculateDuration(startDate, endDate) / (24 * 60 * 60))} days
+                Lock Duration:{" "}
+                {Math.ceil(
+                  calculateDuration(startDate, endDate) / (24 * 60 * 60)
+                )}{" "}
+                days
               </p>
               <p className="text-xs text-muted-foreground">
-                From {new Date(startDate).toLocaleDateString()} to {new Date(endDate).toLocaleDateString()}
+                From {new Date(startDate).toLocaleDateString()} to{" "}
+                {new Date(endDate).toLocaleDateString()}
               </p>
             </div>
           )}
@@ -192,15 +210,6 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {writeError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                Transaction failed: {writeError.message}
-              </AlertDescription>
             </Alert>
           )}
 
@@ -239,5 +248,5 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

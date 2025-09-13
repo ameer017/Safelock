@@ -1,6 +1,6 @@
-# 🤝 Contributing to Cartridge
+# 🤝 Contributing to Safelock
 
-Thank you for your interest in contributing to Cartridge! This document provides guidelines for contributing to the project.
+Thank you for your interest in contributing to Safelock! This document provides guidelines for contributing to the project.
 
 ## 📋 Table of Contents
 
@@ -206,4 +206,4 @@ When contributing to specific milestones:
 3. **Link related issues** to the milestone
 4. **Follow the weekly timeline** outlined in the milestone
 
-Thank you for contributing to Cartridge! 🛡️
+Thank you for contributing to Safelock! 🛡️

@@ -2,14 +2,16 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 
-import { Navbar } from '@/components/navbar';
-import { WalletProvider } from "@/components/wallet-provider"
+import { Navbar } from '../components/navbar';
+import { WalletProvider } from "../components/wallet-provider"
+import { ThemeProvider } from "../components/theme-provider"
+import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'cartridge',
-  description: 'A new Celo blockchain project',
+  title: 'Safelock',
+  description: 'Save smarter. Spend wiser',
 };
 
 export default function RootLayout({
@@ -18,17 +20,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        {/* Navbar is included on all pages */}
-        <div className="relative flex min-h-screen flex-col">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
           <WalletProvider>
-            <Navbar />
-            <main className="flex-1">
-              {children}
-            </main>
+            <div className="relative flex min-h-screen flex-col">
+              <Navbar />
+              <main className="flex-1">
+                {children}
+              </main>
+            </div>
+            <Toaster />
           </WalletProvider>
-        </div>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -178,11 +178,6 @@ contract SafeLock {
         _;
     }
 
-    // New: User registration modifier
-    modifier userRegistered() {
-        require(userProfiles[msg.sender].isActive, "User not registered");
-        _;
-    }
 
     // New: Username validation modifier
     modifier validUsername(string memory username) {
@@ -293,7 +288,8 @@ contract SafeLock {
     function updateProfile(
         string memory newUsername,
         string memory newProfileImageHash
-    ) external userRegistered {
+    ) external {
+        require(userProfiles[msg.sender].isActive, "User not registered");
         UserProfile storage profile = userProfiles[msg.sender];
         
         // If username is changing, validate it's unique
@@ -323,7 +319,8 @@ contract SafeLock {
      * This is a critical safety feature that allows users to exit the platform immediately
      * Optimized to avoid N+1 queries by using cached user info
      */
-    function deactivateAccount() external userRegistered reentrancyGuard {
+    function deactivateAccount() external reentrancyGuard {
+        require(userProfiles[msg.sender].isActive, "User not registered");
         UserProfile storage profile = userProfiles[msg.sender];
         require(profile.isActive, "Account already deactivated");
 
@@ -409,6 +406,17 @@ contract SafeLock {
         return userProfiles[user].isActive;
     }
 
+    /**
+     * @dev Check if a username is available
+     * @param username Username to check
+     * @return True if username is available, false if already taken
+     */
+    function isUsernameAvailable(string memory username) external view returns (bool) {
+        require(bytes(username).length >= 3, "Username too short");
+        require(bytes(username).length <= 32, "Username too long");
+        return usernameToAddress[username] == address(0);
+    }
+
 
     /**
      * @dev Create a new savings lock (now requires user registration)
@@ -422,9 +430,9 @@ contract SafeLock {
         external
         reentrancyGuard
         whenNotPaused
-        userRegistered
         withinUserLimits(msg.sender)
     {
+        require(userProfiles[msg.sender].isActive, "User not registered");
         require(amount > 0, "Amount must be greater than 0");
         require(amount <= MAX_LOCK_AMOUNT, "Amount exceeds maximum limit");
         require(
@@ -492,11 +500,11 @@ contract SafeLock {
         external
         reentrancyGuard
         whenNotPaused
-        userRegistered
         onlyLockOwner(lockId)
         lockExists(lockId)
         lockActive(lockId)
     {
+        require(userProfiles[msg.sender].isActive, "User not registered");
         SavingsLock storage lock = savingsLocks[lockId];
         require(!lock.isWithdrawn, "Already withdrawn");
 

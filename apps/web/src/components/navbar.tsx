@@ -4,17 +4,20 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Menu, ExternalLink } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "./ui/button"
 import {
   Sheet,
   SheetContent,
   SheetTrigger,
-} from "@/components/ui/sheet"
+} from "./ui/sheet"
 
-import { WalletConnectButton } from "@/components/connect-button"
+import { WalletConnectButton } from "./connect-button"
+import { ThemeToggle } from "./theme-toggle"
 
 const navLinks = [
   { name: "Home", href: "/" },
+  { name: "Dashboard", href: "/dashboard" },
+  { name: "Profile", href: "/profile" },
   { name: "Docs", href: "https://docs.celo.org", external: true },
 ]
 
@@ -37,7 +40,7 @@ export function Navbar() {
               <div className="flex items-center gap-2 mb-8">
 
                 <span className="font-bold text-lg">
-                  cartridge
+                  Safelock
                 </span>
               </div>
               <nav className="flex flex-col gap-4">
@@ -55,7 +58,11 @@ export function Navbar() {
                     {link.external && <ExternalLink className="h-4 w-4" />}
                   </Link>
                 ))}
-                <div className="mt-6 pt-6 border-t">
+                <div className="mt-6 pt-6 border-t space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Theme</span>
+                    <ThemeToggle />
+                  </div>
                   <WalletConnectButton />
                 </div>
               </nav>
@@ -66,7 +73,7 @@ export function Navbar() {
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
 
             <span className="hidden font-bold text-xl sm:inline-block">
-              cartridge
+              Safelock
             </span>
           </Link>
         </div>
@@ -91,6 +98,7 @@ export function Navbar() {
           ))}
           
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <WalletConnectButton />
           </div>
         </nav>

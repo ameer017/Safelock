@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
 export function WalletConnectButton() {
@@ -97,9 +98,11 @@ export function WalletConnectButton() {
                     {chain.hasIcon && (
                       <div style={iconStyle}>
                         {chain.iconUrl && (
-                          <img
+                          <Image
                             alt={chain.name ?? 'Chain icon'}
                             src={chain.iconUrl}
+                            width={12}
+                            height={12}
                             style={imgStyle}
                           />
                         )}

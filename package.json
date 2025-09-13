@@ -1,5 +1,5 @@
 {
-    "name": "Cartridge",
+    "name": "Safelock",
     "version": "0.1.0",
     "description": "A decentralized contingency platform for savings with time-locked discipline",
     "private": true,
@@ -15,7 +15,7 @@
       "contracts:deploy:alfajores": "turbo run deploy:alfajores --filter=hardhat",
       "contracts:deploy:celo": "turbo run deploy:celo --filter=hardhat",
       "commitlint": "commitlint --edit",
-      "prepare": "husky install"
+      "prepare": "husky install || true"
     },
     "devDependencies": {
       "@commitlint/cli": "^18.4.3",

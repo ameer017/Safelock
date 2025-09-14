@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "divvi-mcp": {
+      "command": "npx",
+      "args": ["-y", "@divvi/mcp-server"]
+    }
+  }
+}

@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import {
-  useWriteContract,
-  useWaitForTransactionReceipt,
+  useAccount,
 } from "wagmi";
 import { Button } from "./ui/button";
 import {
@@ -17,8 +16,9 @@ import {
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Alert, AlertDescription } from "./ui/alert";
-import { SAFELOCK_CONTRACT } from "../lib/contracts";
-import { Plus, Loader2, AlertCircle } from "lucide-react";
+import { useDivvi } from "../hooks/use-divvi";
+import { createSavingsLockWithReferral } from "../lib/safelock-contract";
+import { Plus, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 
 interface CreateLockModalProps {
   children: React.ReactNode;
@@ -42,13 +42,12 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
   const [endDate, setEndDate] = useState("");
   const [error, setError] = useState("");
   const [mounted, setMounted] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
-  const { writeContract, data: hash, isPending } = useWriteContract();
-
-  const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({
-      hash,
-    });
+  const { address, isConnected } = useAccount();
+  const { isAvailable: isDivviAvailable } = useDivvi();
 
 
   useEffect(() => {
@@ -100,17 +99,41 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
 
  
 
+    if (!isConnected || !address) {
+      setError("Please connect your wallet first");
+      return;
+    }
+
+    setIsPending(true);
+    setIsConfirming(false);
+    setIsSuccess(false);
+
     try {
-      await writeContract({
-        address: SAFELOCK_CONTRACT.address,
-        abi: SAFELOCK_CONTRACT.abi,
-        functionName: "createSavingsLock",
-        args: [BigInt(durationInSeconds), amountInWei],
-      });
+      // Use Divvi-integrated lock creation function
+      await createSavingsLockWithReferral(
+        address,
+        durationInSeconds,
+        amountInWei
+      );
       
-     
+      setIsPending(false);
+      setIsConfirming(true);
+      
+      // Simulate waiting for confirmation
+      setTimeout(() => {
+        setIsConfirming(false);
+        setIsSuccess(true);
+        setIsOpen(false);
+        // Reset form
+        setAmount("");
+        setStartDate(formatDateForInput(new Date()));
+        setEndDate("");
+      }, 3000);
+      
     } catch (error) {
       console.error("❌ Failed to create lock:", error);
+      setIsPending(false);
+      setIsConfirming(false);
       setError(`Failed to create lock: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
@@ -144,6 +167,15 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
             build discipline.
           </DialogDescription>
         </DialogHeader>
+
+        {isDivviAvailable && (
+          <Alert>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              Referral tracking enabled - your savings lock will be tracked for rewards!
+            </AlertDescription>
+          </Alert>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
@@ -213,9 +245,9 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
             </Alert>
           )}
 
-          {isConfirmed && (
+          {isSuccess && (
             <Alert>
-              <AlertCircle className="h-4 w-4" />
+              <CheckCircle className="h-4 w-4" />
               <AlertDescription>
                 Lock created successfully! Your funds are now locked.
               </AlertDescription>

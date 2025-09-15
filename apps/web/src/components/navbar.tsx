@@ -17,6 +17,7 @@ import { ThemeToggle } from "./theme-toggle"
 const navLinks = [
   { name: "Home", href: "/" },
   { name: "Dashboard", href: "/dashboard" },
+  { name: "Savings", href: "/savings" },
   { name: "Profile", href: "/profile" },
   { name: "Docs", href: "https://docs.celo.org", external: true },
 ]

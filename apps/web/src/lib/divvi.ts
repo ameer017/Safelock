@@ -1,18 +1,30 @@
 import { getReferralTag, submitReferral } from '@divvi/referral-sdk'
 import { createWalletClient, custom, type Address, type Hash } from 'viem'
-import { mainnet } from 'viem/chains'
+import { celo, celoAlfajores } from 'wagmi/chains'
 
 // Divvi consumer address for SafeLock
 export const DIVVI_CONSUMER_ADDRESS = '0xCf7D46393309a9e46B0a3AC3f6fB8A3cA3B5C029' as const
 
 // Create wallet client for Divvi integration
-export const createDivviWalletClient = () => {
+export const createDivviWalletClient = async () => {
   if (typeof window === 'undefined' || !window.ethereum) {
     throw new Error('Ethereum provider not found')
   }
 
+  // Create a temporary client to get the current chain ID
+  const tempClient = createWalletClient({
+    chain: celoAlfajores, // Default to Alfajores for initial setup
+    transport: custom(window.ethereum),
+  })
+
+  // Get the current chain ID from the provider
+  const chainId = await tempClient.getChainId()
+  
+  // Determine the correct chain based on the current chain ID
+  const chain = chainId === celo.id ? celo : celoAlfajores
+
   return createWalletClient({
-    chain: mainnet,
+    chain,
     transport: custom(window.ethereum),
   })
 }
@@ -50,7 +62,7 @@ export const sendTransactionWithReferral = async (
     gasPrice?: bigint
   }
 ) => {
-  const walletClient = createDivviWalletClient()
+  const walletClient = await createDivviWalletClient()
   
   // Generate referral tag
   const referralTag = generateReferralTag(userAddress)
@@ -90,7 +102,7 @@ export const writeContractWithReferral = async (
     gasPrice?: bigint
   }
 ) => {
-  const walletClient = createDivviWalletClient()
+  const walletClient = await createDivviWalletClient()
   
   // Generate referral tag
   const referralTag = generateReferralTag(userAddress)

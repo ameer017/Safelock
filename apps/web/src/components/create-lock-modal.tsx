@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   useAccount,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useReadContract,
 } from "wagmi";
 import { Button } from "./ui/button";
 import {
@@ -16,8 +19,8 @@ import {
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Alert, AlertDescription } from "./ui/alert";
-import { useDivvi } from "../hooks/use-divvi";
-import { createSavingsLockWithReferral } from "../lib/safelock-contract";
+import { createSavingsLock } from "../lib/safelock-contract";
+import { CUSD_TOKEN } from "../lib/contracts";
 import { Plus, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 
 interface CreateLockModalProps {
@@ -40,44 +43,146 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
   const [amount, setAmount] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [error, setError] = useState("");
+  const [localError, setLocalError] = useState("");
   const [mounted, setMounted] = useState(false);
-  const [isPending, setIsPending] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
 
   const { address, isConnected } = useAccount();
-  const { isAvailable: isDivviAvailable } = useDivvi();
+  const { writeContract, isPending, isError, error, data: writeData } = useWriteContract();
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
+  const [approvalTxHash, setApprovalTxHash] = useState<`0x${string}` | undefined>();
+  const [needsApproval, setNeedsApproval] = useState(false);
+  const [approvalCompleted, setApprovalCompleted] = useState(false);
+  
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash: txHash,
+  });
+  const { isLoading: isApproving, isSuccess: isApprovalSuccess } = useWaitForTransactionReceipt({
+    hash: approvalTxHash,
+  });
 
+  const [currentAmount, setCurrentAmount] = useState<bigint>(0n);
+  const { data: currentAllowance } = useReadContract({
+    address: CUSD_TOKEN.address,
+    abi: CUSD_TOKEN.abi,
+    functionName: "allowance",
+    args: address && currentAmount > 0n ? [address, "0x8a300e0FBA80d83C3935EEC65233Cdf4D970972d"] : undefined,
+    query: {
+      enabled: !!address && currentAmount > 0n,
+    },
+  });
 
   useEffect(() => {
     setMounted(true);
-    // Set default start date to today
     setStartDate(formatDateForInput(new Date()));
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+  useEffect(() => {
+    if (amount && !isNaN(parseFloat(amount)) && parseFloat(amount) >= 0) {
+      setCurrentAmount(BigInt(parseFloat(amount) * 1e18));
+    } else {
+      setCurrentAmount(0n);
+    }
+  }, [amount]);
 
-    if (!amount || !startDate || !endDate) {
-      setError("Please fill in all fields");
+  useEffect(() => {
+    if (writeData && typeof writeData === 'string') {
+      if (needsApproval && !approvalTxHash) {
+        setApprovalTxHash(writeData as `0x${string}`);
+      } else if (!needsApproval || approvalCompleted) {
+        setTxHash(writeData as `0x${string}`);
+      }
+    }
+  }, [writeData, needsApproval, approvalTxHash, approvalCompleted]);
+
+
+  useEffect(() => {
+    if (isApprovalSuccess && needsApproval && !approvalCompleted) {
+      setApprovalCompleted(true);
+      setLocalError(""); 
+      
+      const durationInSeconds = calculateDuration(startDate, endDate);
+      const amountInWei = BigInt(parseFloat(amount) * 1e18);
+      
+      try {
+        const contractData = createSavingsLock(durationInSeconds, amountInWei);
+        writeContract(contractData);
+      } catch (error) {
+        console.error("❌ Failed to create lock after approval:", error);
+        setLocalError(`Failed to create lock: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+    }
+  }, [isApprovalSuccess, needsApproval, approvalCompleted, startDate, endDate, amount, writeContract]);
+
+
+  useEffect(() => {
+    if (isSuccess && txHash) {
+      setIsOpen(false);
+
+      setAmount("");
+      setStartDate(formatDateForInput(new Date()));
+      setEndDate("");
+      setTxHash(undefined);
+      setApprovalTxHash(undefined);
+      setNeedsApproval(false);
+      setApprovalCompleted(false);
+      
+      window.location.reload();
+    }
+  }, [isSuccess, txHash]);
+
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (isPending || isConfirming || isApproving) {
       return;
     }
 
-    // Validate dates
+    setIsOpen(open);
+    
+    if (!open) {
+      setAmount("");
+      setStartDate(formatDateForInput(new Date()));
+      setEndDate("");
+      setLocalError("");
+      setNeedsApproval(false);
+      setApprovalCompleted(false);
+      setApprovalTxHash(undefined);
+      setTxHash(undefined);
+    }
+  }, [isPending, isConfirming, isApproving]);
+
+  useEffect(() => {
+    if ((txHash || writeData) && !isSuccess && !isPending && !isConfirming && !isApproving) {
+      const timer = setTimeout(() => {
+       
+        handleOpenChange(false);
+
+        window.location.reload();
+      }, 30000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [txHash, writeData, isSuccess, isPending, isConfirming, isApproving, handleOpenChange]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLocalError("");
+
+    if (!amount || !startDate || !endDate) {
+      setLocalError("Please fill in all fields");
+      return;
+    }
+
     const start = new Date(startDate);
     const end = new Date(endDate);
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+    today.setHours(0, 0, 0, 0);
 
     if (start < today) {
-      setError("Start date cannot be in the past");
+      setLocalError("Start date cannot be in the past");
       return;
     }
 
     if (end <= start) {
-      setError("End date must be after start date");
+      setLocalError("End date must be after start date");
       return;
     }
 
@@ -86,71 +191,52 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
     const maxDuration = 365 * 24 * 60 * 60;
 
     if (durationInSeconds < minDuration) {
-      setError("Lock duration must be at least 1 day");
+      setLocalError("Lock duration must be at least 1 day");
       return;
     }
 
     if (durationInSeconds > maxDuration) {
-      setError("Lock duration cannot exceed 1 year");
+      setLocalError("Lock duration cannot exceed 1 year");
+      return;
+    }
+
+    if (!isConnected || !address) {
+      setLocalError("Please connect your wallet first");
       return;
     }
 
     const amountInWei = BigInt(parseFloat(amount) * 1e18);
 
- 
-
-    if (!isConnected || !address) {
-      setError("Please connect your wallet first");
-      return;
-    }
-
-    setIsPending(true);
-    setIsConfirming(false);
-    setIsSuccess(false);
-
     try {
-      // Use Divvi-integrated lock creation function
-      await createSavingsLockWithReferral(
-        address,
-        durationInSeconds,
-        amountInWei
-      );
+      const allowance = currentAllowance as bigint || 0n;
       
-      setIsPending(false);
-      setIsConfirming(true);
+      if (allowance < amountInWei) {
+        setNeedsApproval(true);
+        setApprovalCompleted(false);
+        
+        const approvalData = {
+          address: CUSD_TOKEN.address,
+          abi: CUSD_TOKEN.abi,
+          functionName: "approve" as const,
+          args: ["0x8a300e0FBA80d83C3935EEC65233Cdf4D970972d" as `0x${string}`, amountInWei] as const,
+        };
+        
+        writeContract(approvalData as any);
+        return;
+      }
       
-      // Simulate waiting for confirmation
-      setTimeout(() => {
-        setIsConfirming(false);
-        setIsSuccess(true);
-        setIsOpen(false);
-        // Reset form
-        setAmount("");
-        setStartDate(formatDateForInput(new Date()));
-        setEndDate("");
-      }, 3000);
+      setNeedsApproval(false);
+      const contractData = createSavingsLock(durationInSeconds, amountInWei);
+      writeContract(contractData);
       
     } catch (error) {
       console.error("❌ Failed to create lock:", error);
-      setIsPending(false);
-      setIsConfirming(false);
-      setError(`Failed to create lock: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setLocalError(`Failed to create lock: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 
-  const handleOpenChange = (open: boolean) => {
-    if (!isPending && !isConfirming) {
-      setIsOpen(open);
-      if (!open) {
-        setAmount("");
-        setStartDate(formatDateForInput(new Date()));
-        setEndDate("");
-        setError("");
-      }
-    }
-  };
 
-  const isProcessing = isPending || isConfirming;
+  const isProcessing = isPending || isConfirming || isApproving;
 
   if (!mounted) {
     return <>{children}</>;
@@ -164,18 +250,21 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
           <DialogTitle>Create New Savings Lock</DialogTitle>
           <DialogDescription>
             Lock your cUSD tokens for a specified duration to earn rewards and
-            build discipline.
+            build discipline. You&apos;ll need to approve the contract to spend your tokens first.
           </DialogDescription>
         </DialogHeader>
 
-        {isDivviAvailable && (
+        {amount && currentAmount > 0n && (
           <Alert>
-            <CheckCircle className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Referral tracking enabled - your savings lock will be tracked for rewards!
+              {currentAllowance && (currentAllowance as bigint) >= currentAmount
+                ? "✅ Contract has sufficient allowance to create this lock"
+                : "⚠️ You'll need to approve the contract to spend your cUSD tokens first"}
             </AlertDescription>
           </Alert>
         )}
+
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
@@ -238,10 +327,31 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
             </div>
           )}
 
-          {error && (
+        {/* Approval Status Messages */}
+        {needsApproval && isApproving && (
+          <Alert>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <AlertDescription>
+              Waiting for approval transaction to be confirmed...
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {needsApproval && isApprovalSuccess && !approvalCompleted && (
+          <Alert>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              ✅ Approval successful! Now creating your savings lock...
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {(localError || isError) && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              {localError || (error as Error)?.message || "Failed to create lock"}
+            </AlertDescription>
             </Alert>
           )}
 
@@ -249,10 +359,32 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
             <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
-                Lock created successfully! Your funds are now locked.
-              </AlertDescription>
-            </Alert>
-          )}
+              🎉 Lock created successfully! Your funds are now locked.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!isPending && !isConfirming && !isApproving && !isSuccess && (txHash || writeData) && (
+          <Alert>
+            <CheckCircle className="h-4 w-4" />
+            <AlertDescription>
+              Transaction submitted! If your transaction was successful on the blockchain but this modal is still open, you can safely close it.
+              <div className="mt-2">
+                <Button 
+                  size="sm" 
+                  onClick={() => {
+                    handleOpenChange(false);
+
+                    window.location.reload();
+                  }}
+                  className="w-full"
+                >
+                  Close Modal & Refresh
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
           <div className="flex justify-end space-x-2">
             <Button
@@ -267,7 +399,12 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
               {isProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isPending ? "Creating..." : "Confirming..."}
+                  {isApproving ? "Approving..." : isPending ? "Creating..." : "Confirming..."}
+                </>
+              ) : needsApproval && !isApprovalSuccess ? (
+                <>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Approve & Create Lock
                 </>
               ) : (
                 <>

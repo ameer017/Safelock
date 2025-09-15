@@ -7,10 +7,11 @@ import * as z from "zod";
 import {
   useAccount,
   useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
 } from "wagmi";
 import { SAFELOCK_CONTRACT } from "../lib/contracts";
-import { useDivvi } from "../hooks/use-divvi";
-import { registerUserWithReferral } from "../lib/safelock-contract";
+import { registerUser } from "../lib/safelock-contract";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -44,15 +45,15 @@ export function RegisterFormInner() {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(
     null
   );
-  const [error, setError] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [checkUsername, setCheckUsername] = useState<string>("");
 
   const { address, isConnected } = useAccount();
-  const { isAvailable: isDivviAvailable } = useDivvi();
-  const [isPending, setIsPending] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [writeError, setWriteError] = useState<Error | null>(null);
+  const { writeContract, isPending, isError, error, data: writeData } = useWriteContract();
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash: txHash,
+  });
 
   const {
     register,
@@ -115,51 +116,44 @@ export function RegisterFormInner() {
 
   const onSubmit = async (data: RegisterFormData) => {
     if (!isConnected) {
-      setError("Please connect your wallet first");
+      setLocalError("Please connect your wallet first");
       return;
     }
 
-    setError(null);
-    setWriteError(null);
-    setIsPending(true);
-    setIsConfirming(false);
-    setIsSuccess(false);
+    setLocalError(null);
 
     try {
-      // Use Divvi-integrated registration function
-      await registerUserWithReferral(
+      // Use simplified registration function
+      const contractData = registerUser(
         address!,
         data.username,
         data.profileImageHash || ""
       );
       
-      setIsPending(false);
-      setIsConfirming(true);
-      
-      // Simulate waiting for confirmation (in a real app, you'd use wagmi's useWaitForTransactionReceipt)
-      // For now, we'll just set success after a short delay
-      setTimeout(() => {
-        setIsConfirming(false);
-        setIsSuccess(true);
-      }, 3000);
+      writeContract(contractData);
       
     } catch (error) {
       console.error("Registration error:", error);
-      setIsPending(false);
-      setIsConfirming(false);
-      setWriteError(error as Error);
-      setError("Failed to register user. Please try again.");
+      setLocalError("Failed to register user. Please try again.");
     }
   };
 
   // Reset form when transaction is successful
   useEffect(() => {
-    if (isSuccess) {
+    if (isSuccess && txHash) {
       setIsOpen(false);
       reset();
-      setError(null);
+      setLocalError(null);
+      setTxHash(undefined);
     }
-  }, [isSuccess, reset]);
+  }, [isSuccess, txHash, reset]);
+
+  // Capture transaction hash when writeData changes
+  useEffect(() => {
+    if (writeData && typeof writeData === 'string') {
+      setTxHash(writeData);
+    }
+  }, [writeData]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -195,27 +189,11 @@ export function RegisterFormInner() {
           </Alert>
         )}
 
-        {isDivviAvailable && (
-          <Alert>
-            <CheckCircle className="h-4 w-4" />
-            <AlertDescription>
-              Referral tracking enabled - your registration will be tracked for rewards!
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {writeError && (
+        {(localError || isError) && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Transaction failed: {writeError.message}
+              {localError || (error as Error)?.message || "Registration failed"}
             </AlertDescription>
           </Alert>
         )}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAccount, useReadContract } from "wagmi";
 import { Button } from "../../components/ui/button";
 import {
@@ -12,7 +13,6 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
-import { Progress } from "../../components/ui/progress";
 import {
   Tabs,
   TabsContent,
@@ -114,7 +114,6 @@ function DashboardContent() {
     );
   }
 
-  console.log({ isRegistered });
 
   const locks = userLocks?.[1] || [];
   const activeLocks = locks.filter(
@@ -255,13 +254,13 @@ function DashboardContent() {
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Savings Overview */}
+          {/* Savings Summary */}
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle>Savings Overview</CardTitle>
+                <CardTitle>Savings Summary</CardTitle>
                 <CardDescription>
-                  Track your active savings locks and their status
+                  Quick overview of your savings activity
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -290,68 +289,17 @@ function DashboardContent() {
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    <div className="space-y-4">
-                      {activeLocks.map((lock: any) => {
-                        const lockDuration =
-                          Number(lock.unlockTime) - Number(lock.lockTime);
-                        const timeRemaining =
-                          Number(lock.unlockTime) -
-                          Math.floor(Date.now() / 1000);
-                        const progressPercent = Math.max(
-                          0,
-                          Math.min(
-                            100,
-                            ((lockDuration - timeRemaining) / lockDuration) *
-                              100
-                          )
-                        );
-
-                        return (
-                          <div key={lock.id} className="p-4 border rounded-lg">
-                            <div className="flex justify-between items-start mb-2">
-                              <div>
-                                <h4 className="font-semibold">
-                                  Lock #{lock.id}
-                                </h4>
-                                <p className="text-sm text-muted-foreground">
-                                  Amount: $
-                                  {(Number(lock.amount) / 1e18).toLocaleString(
-                                    undefined,
-                                    { maximumFractionDigits: 2 }
-                                  )}
-                                </p>
-                              </div>
-                              <Badge
-                                variant={
-                                  timeRemaining > 0 ? "default" : "secondary"
-                                }
-                              >
-                                {timeRemaining > 0
-                                  ? "Active"
-                                  : "Ready to Withdraw"}
-                              </Badge>
-                            </div>
-                            <div className="space-y-2">
-                              <div className="flex justify-between text-sm">
-                                <span>Progress</span>
-                                <span>{Math.round(progressPercent)}%</span>
-                              </div>
-                              <Progress
-                                value={progressPercent}
-                                className="h-2"
-                              />
-                              <p className="text-xs text-muted-foreground">
-                                {timeRemaining > 0
-                                  ? `Unlocks in ${Math.ceil(
-                                      timeRemaining / (24 * 60 * 60)
-                                    )} days`
-                                  : "Ready for withdrawal"}
-                              </p>
-                            </div>
-                          </div>
-                        );
-                      })}
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <p className="text-muted-foreground mb-4">
+                        You have {activeLocks.length} active savings lock{activeLocks.length !== 1 ? 's' : ''}
+                      </p>
+                      <Button asChild variant="outline">
+                        <Link href="/savings">
+                          <TrendingUp className="h-4 w-4 mr-2" />
+                          View All Savings
+                        </Link>
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -367,6 +315,12 @@ function DashboardContent() {
                 <CardDescription>Manage your savings account</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <CreateLockModal>
+                  <Button className="w-full justify-start">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create New Lock
+                  </Button>
+                </CreateLockModal>
                 <Button className="w-full justify-start" variant="outline">
                   <Minus className="mr-2 h-4 w-4" />
                   Withdraw

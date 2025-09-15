@@ -1,41 +1,32 @@
 import { SAFELOCK_CONTRACT, CONTRACT_CONSTANTS } from './contracts'
-import { writeContractWithReferral, isDivviAvailable } from './divvi'
 import type { Address } from 'viem'
 
-// Enhanced SafeLock contract interactions with Divvi referral tracking
+// SafeLock contract interactions (Divvi integration temporarily disabled for testnet testing)
 
 /**
- * Register a user with Divvi referral tracking
+ * Register a user (simplified without Divvi referral tracking)
  */
-export const registerUserWithReferral = async (
+export const registerUser = (
   userAddress: Address,
   username: string,
   profileImageHash: string = ''
 ) => {
-  if (!isDivviAvailable()) {
-    throw new Error('Ethereum provider not available')
-  }
-
-  return writeContractWithReferral(userAddress, {
+  // This function should be used with useWriteContract hook in components
+  return {
     address: SAFELOCK_CONTRACT.address,
     abi: SAFELOCK_CONTRACT.abi,
-    functionName: 'registerUser',
-    args: [username, profileImageHash],
-  })
+    functionName: 'registerUser' as const,
+    args: [username, profileImageHash] as const,
+  }
 }
 
 /**
- * Create a savings lock with Divvi referral tracking
+ * Create a savings lock (simplified without Divvi referral tracking)
  */
-export const createSavingsLockWithReferral = async (
-  userAddress: Address,
+export const createSavingsLock = (
   lockDuration: number,
   amount: bigint
 ) => {
-  if (!isDivviAvailable()) {
-    throw new Error('Ethereum provider not available')
-  }
-
   // Validate lock duration
   if (lockDuration < CONTRACT_CONSTANTS.MIN_LOCK_DURATION) {
     throw new Error('Lock duration too short')
@@ -52,67 +43,55 @@ export const createSavingsLockWithReferral = async (
     throw new Error('Amount exceeds maximum limit')
   }
 
-  return writeContractWithReferral(userAddress, {
+  // This function should be used with useWriteContract hook in components
+  return {
     address: SAFELOCK_CONTRACT.address,
     abi: SAFELOCK_CONTRACT.abi,
-    functionName: 'createSavingsLock',
-    args: [lockDuration, amount],
-  })
-}
-
-/**
- * Withdraw savings with Divvi referral tracking
- */
-export const withdrawSavingsWithReferral = async (
-  userAddress: Address,
-  lockId: number
-) => {
-  if (!isDivviAvailable()) {
-    throw new Error('Ethereum provider not available')
+    functionName: 'createSavingsLock' as const,
+    args: [BigInt(lockDuration), amount] as const,
   }
-
-  return writeContractWithReferral(userAddress, {
-    address: SAFELOCK_CONTRACT.address,
-    abi: SAFELOCK_CONTRACT.abi,
-    functionName: 'withdrawSavings',
-    args: [lockId],
-  })
 }
 
 /**
- * Update user profile with Divvi referral tracking
+ * Withdraw savings (simplified without Divvi referral tracking)
  */
-export const updateProfileWithReferral = async (
-  userAddress: Address,
+export const withdrawSavings = (lockId: number) => {
+  // This function should be used with useWriteContract hook in components
+  return {
+    address: SAFELOCK_CONTRACT.address,
+    abi: SAFELOCK_CONTRACT.abi,
+    functionName: 'withdrawSavings' as const,
+    args: [lockId] as const,
+  }
+}
+
+/**
+ * Update user profile (simplified without Divvi referral tracking)
+ */
+export const updateProfile = (
   newUsername: string,
   newProfileImageHash: string = ''
 ) => {
-  if (!isDivviAvailable()) {
-    throw new Error('Ethereum provider not available')
-  }
-
-  return writeContractWithReferral(userAddress, {
+  // This function should be used with useWriteContract hook in components
+  return {
     address: SAFELOCK_CONTRACT.address,
     abi: SAFELOCK_CONTRACT.abi,
-    functionName: 'updateProfile',
-    args: [newUsername, newProfileImageHash],
-  })
+    functionName: 'updateProfile' as const,
+    args: [newUsername, newProfileImageHash] as const,
+  }
 }
 
 /**
- * Emergency account deactivation with Divvi referral tracking
+ * Emergency account deactivation (simplified without Divvi referral tracking)
  */
-export const deactivateAccountWithReferral = async (userAddress: Address) => {
-  if (!isDivviAvailable()) {
-    throw new Error('Ethereum provider not available')
-  }
-
-  return writeContractWithReferral(userAddress, {
+export const deactivateAccount = () => {
+  // This function should be used with useWriteContract hook in components
+  return {
     address: SAFELOCK_CONTRACT.address,
     abi: SAFELOCK_CONTRACT.abi,
-    functionName: 'deactivateAccount',
-    args: [],
-  })
+    functionName: 'deactivateAccount' as const,
+    args: [] as const,
+  }
 }
 
 // Read-only contract functions (no referral tracking needed for reads)

@@ -1,6 +1,5 @@
 // Contract configuration for SafeLock
 export const SAFELOCK_CONTRACT = {
-  
   address: "0x8a300e0FBA80d83C3935EEC65233Cdf4D970972d" as `0x${string}`,
   
   "abi": [
@@ -1007,6 +1006,55 @@ export const SAFELOCK_CONTRACT = {
       "name": "withdrawSavings",
       "outputs": [],
       "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ] as const
+}
+
+// Celo cUSD token configuration for Alfajores testnet
+export const CUSD_TOKEN = {
+  address: "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1" as `0x${string}`,
+  
+  abi: [
+    {
+      "inputs": [
+        {"internalType": "address", "name": "owner", "type": "address"},
+        {"internalType": "address", "name": "spender", "type": "address"}
+      ],
+      "name": "allowance",
+      "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {"internalType": "address", "name": "spender", "type": "address"},
+        {"internalType": "uint256", "name": "amount", "type": "uint256"}
+      ],
+      "name": "approve",
+      "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
+      "name": "balanceOf",
+      "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "decimals",
+      "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "symbol",
+      "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+      "stateMutability": "view",
       "type": "function"
     }
   ] as const

@@ -16,6 +16,7 @@ import { Progress } from "../../components/ui/progress";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Skeleton } from "../../components/ui/skeleton";
 import { CreateLockModal } from "../../components/create-lock-modal";
+import { WithdrawModal } from "../../components/withdraw-modal";
 import { SAFELOCK_CONTRACT } from "../../lib/contracts";
 import {
   TrendingUp,
@@ -26,12 +27,19 @@ import {
   AlertCircle,
   Loader2,
   ArrowLeft,
+  Minus,
 } from "lucide-react";
 import Link from "next/link";
 
 function SavingsPageContent() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [selectedLock, setSelectedLock] = useState<{
+    id: number;
+    amount: bigint;
+    unlockTime: bigint;
+  } | null>(null);
 
   const { data: isRegistered, isLoading: isCheckingRegistration } =
     useReadContract({
@@ -124,6 +132,20 @@ function SavingsPageContent() {
     if (elapsed >= totalDuration) return 100;
     
     return Math.min((elapsed / totalDuration) * 100, 100);
+  };
+
+  const isLockReadyForWithdrawal = (unlockTime: bigint) => {
+    const now = Math.floor(Date.now() / 1000);
+    return Number(unlockTime) <= now;
+  };
+
+  const handleWithdrawClick = (lock: any) => {
+    setSelectedLock({
+      id: Number(lock.id),
+      amount: lock.amount,
+      unlockTime: lock.unlockTime,
+    });
+    setWithdrawModalOpen(true);
   };
 
   return (
@@ -235,48 +257,94 @@ function SavingsPageContent() {
               </div>
             ) : (
               <div className="space-y-6">
-                {locks.map((lock: any) => (
-                  <div
-                    key={lock.id}
-                    className="flex items-center justify-between p-4 border rounded-lg"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                        <DollarSign className="h-6 w-6 text-primary" />
+                {locks.map((lock: any) => {
+                  const isReady = isLockReadyForWithdrawal(lock.unlockTime);
+                  const canWithdraw = lock.isActive && isReady && !lock.isWithdrawn;
+                  
+                  return (
+                    <div
+                      key={lock.id}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                          <DollarSign className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <h4 className="font-semibold">Lock #{lock.id}</h4>
+                            <Badge variant={lock.isActive ? "default" : "secondary"}>
+                              {lock.isActive ? "Active" : lock.isWithdrawn ? "Completed" : "Inactive"}
+                            </Badge>
+                          </div>
+                          <div className="text-sm text-muted-foreground space-y-1">
+                            <p>Amount: ${formatAmount(lock.amount)}</p>
+                            <p>Created: {formatDate(lock.lockTime)}</p>
+                            <p>Unlocks: {formatDate(lock.unlockTime)}</p>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <h4 className="font-semibold">Lock #{lock.id}</h4>
-                          <Badge variant={lock.isActive ? "default" : "secondary"}>
-                            {lock.isActive ? "Active" : lock.isWithdrawn ? "Completed" : "Inactive"}
-                          </Badge>
+                      
+                      <div className="flex items-center space-x-4">
+                        <div className="text-right space-y-2">
+                          <div className="text-sm font-medium">
+                            {getTimeRemaining(lock.unlockTime)}
+                          </div>
+                          <Progress 
+                            value={getProgressPercentage(lock.lockTime, lock.unlockTime)} 
+                            className="w-32"
+                          />
+                          <div className="text-xs text-muted-foreground">
+                            {getProgressPercentage(lock.lockTime, lock.unlockTime).toFixed(1)}% complete
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground space-y-1">
-                          <p>Amount: ${formatAmount(lock.amount)}</p>
-                          <p>Created: {formatDate(lock.lockTime)}</p>
-                          <p>Unlocks: {formatDate(lock.unlockTime)}</p>
-                        </div>
+                        
+                        {/* Withdraw Button */}
+                        {lock.isActive && (
+                          <div className="flex flex-col items-end space-y-2">
+                            <Button
+                              size="sm"
+                              variant={canWithdraw ? "default" : "outline"}
+                              onClick={() => handleWithdrawClick(lock)}
+                              disabled={!canWithdraw}
+                              className="min-w-[100px]"
+                            >
+                              <Minus className="mr-2 h-4 w-4" />
+                              {isReady ? "Withdraw" : "Locked"}
+                            </Button>
+                            {!isReady && (
+                              <div className="text-xs text-muted-foreground text-center">
+                                Available in {getTimeRemaining(lock.unlockTime)}
+                              </div>
+                            )}
+                            {isReady && !lock.isWithdrawn && (
+                              <div className="text-xs text-green-600 text-center">
+                                Ready to withdraw
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    
-                    <div className="text-right space-y-2">
-                      <div className="text-sm font-medium">
-                        {getTimeRemaining(lock.unlockTime)}
-                      </div>
-                      <Progress 
-                        value={getProgressPercentage(lock.lockTime, lock.unlockTime)} 
-                        className="w-32"
-                      />
-                      <div className="text-xs text-muted-foreground">
-                        {getProgressPercentage(lock.lockTime, lock.unlockTime).toFixed(1)}% complete
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
         </Card>
+        
+        {/* Withdraw Modal */}
+        {selectedLock && (
+          <WithdrawModal
+            lockId={selectedLock.id}
+            amount={selectedLock.amount}
+            unlockTime={selectedLock.unlockTime}
+            isOpen={withdrawModalOpen}
+            onOpenChange={setWithdrawModalOpen}
+          >
+            <div />
+          </WithdrawModal>
+        )}
       </div>
     </main>
   );

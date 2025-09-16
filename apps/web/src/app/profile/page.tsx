@@ -111,40 +111,25 @@ function ProfileContent() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Profile Display */}
           <div className="lg:col-span-2">
             <ProfileDisplay />
           </div>
 
-          {/* Profile Actions */}
           <div className="space-y-6">
-            {/* Profile Management */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Profile Management
-                </CardTitle>
-                <CardDescription>
-                  Update your profile information
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ProfileEditModal>
-                  <Button className="w-full">
-                    <User className="mr-2 h-4 w-4" />
-                    Edit Profile
-                  </Button>
-                </ProfileEditModal>
-              </CardContent>
-            </Card>
+            <CardContent>
+              <ProfileEditModal>
+                <Button className="w-full">
+                  <User className="mr-2 h-4 w-4" />
+                  Edit Profile
+                </Button>
+              </ProfileEditModal>
+            </CardContent>
 
-            {/* Account Settings */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Settings className="h-5 w-5" />
-                  Account Settings
+                  Settings
                 </CardTitle>
                 <CardDescription>
                   Manage your account preferences
@@ -163,32 +148,6 @@ function ProfileContent() {
                     Deactivate Account
                   </Button>
                 </AccountDeactivationModal>
-              </CardContent>
-            </Card>
-
-            {/* Account Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Information</CardTitle>
-                <CardDescription>
-                  Your account details and status
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Wallet Address</span>
-                  <code className="text-xs bg-muted px-2 py-1 rounded">
-                    {address && `${address.slice(0, 6)}...${address.slice(-4)}`}
-                  </code>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Account Status</span>
-                  <span className="text-sm font-medium text-green-600">Active</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Registration</span>
-                  <span className="text-sm font-medium">Complete</span>
-                </div>
               </CardContent>
             </Card>
           </div>

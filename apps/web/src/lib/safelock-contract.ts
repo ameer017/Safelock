@@ -55,7 +55,7 @@ export const createSavingsLock = (
 /**
  * Withdraw savings (simplified without Divvi referral tracking)
  */
-export const withdrawSavings = (lockId: number) => {
+export const withdrawSavings = (lockId: bigint) => {
   // This function should be used with useWriteContract hook in components
   return {
     address: SAFELOCK_CONTRACT.address,

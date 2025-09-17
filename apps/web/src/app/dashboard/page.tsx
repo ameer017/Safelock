@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAccount, useReadContract } from "wagmi";
 import { Button } from "../../components/ui/button";
 import {
@@ -114,7 +113,6 @@ function DashboardContent() {
     );
   }
 
-
   const locks = userLocks?.[1] || [];
   const activeLocks = locks.filter(
     (lock: any) => lock.isActive && !lock.isWithdrawn
@@ -135,18 +133,25 @@ function DashboardContent() {
   return (
     <main className="flex-1 p-6">
       <div className="container mx-auto max-w-7xl">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Savings Dashboard
-          </h1>
-          <p className="text-muted-foreground">
-            Welcome back, {userProfile?.username || "User"}! Manage your savings
-            and track your progress.
-          </p>
+        <div className="flex flex-col md:flex-row justify-between items-center my-6">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold tracking-tight">
+              Savings Dashboard
+            </h1>
+            <p className="text-muted-foreground">
+              Welcome back, {userProfile?.username || "User"}! Manage your
+              savings and track your progress.
+            </p>
+          </div>
+
+          <CreateLockModal>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Create New Lock
+            </Button>
+          </CreateLockModal>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -252,104 +257,6 @@ function DashboardContent() {
           </Card>
         </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Savings Summary */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Savings Summary</CardTitle>
-                <CardDescription>
-                  Quick overview of your savings activity
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoadingLocks ? (
-                  <div className="space-y-4">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                  </div>
-                ) : activeLocks.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">
-                      No Active Savings
-                    </h3>
-                    <p className="text-muted-foreground mb-4">
-                      You don&apos;t have any active savings locks yet.
-                    </p>
-                    {isRegistered && (
-                      <CreateLockModal>
-                        <Button>
-                          <Plus className="mr-2 h-4 w-4" />
-                          Create Your First Lock
-                        </Button>
-                      </CreateLockModal>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <p className="text-muted-foreground mb-4">
-                        You have {activeLocks.length} active savings lock{activeLocks.length !== 1 ? 's' : ''}
-                      </p>
-                      <Button asChild variant="outline">
-                        <Link href="/savings">
-                          <TrendingUp className="h-4 w-4 mr-2" />
-                          View All Savings
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Quick Actions */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
-                <CardDescription>Manage your savings account</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <CreateLockModal>
-                  <Button className="w-full justify-start">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create New Lock
-                  </Button>
-                </CreateLockModal>
-                <Button className="w-full justify-start" variant="outline">
-                  <Minus className="mr-2 h-4 w-4" />
-                  Withdraw
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Recent Activity */}
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">
-                    No Recent Activity
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Your recent activity will appear here once you start using
-                    SafeLock.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Transaction History */}
         <Card className="mt-6">
           <CardHeader>
             <CardTitle>Transaction History</CardTitle>

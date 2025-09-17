@@ -7,7 +7,13 @@ import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import { Alert, AlertDescription } from "./ui/alert";
 import { SAFELOCK_CONTRACT } from "../lib/contracts";
-import { User, Calendar, Activity, Image as ImageIcon, AlertCircle } from "lucide-react";
+import {
+  User,
+  Calendar,
+  Activity,
+  Image as ImageIcon,
+  AlertCircle,
+} from "lucide-react";
 
 interface ProfileDisplayProps {
   className?: string;
@@ -130,7 +136,6 @@ export function ProfileDisplay({ className }: ProfileDisplayProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Profile Header */}
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16">
             {userProfile.profileImageHash ? (
@@ -144,60 +149,34 @@ export function ProfileDisplay({ className }: ProfileDisplayProps) {
             )}
           </Avatar>
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between">
               <h3 className="text-xl font-semibold">{userProfile.username}</h3>
-              <Badge variant={userProfile.isActive ? "default" : "secondary"}>
+              <Badge variant={userProfile.isActive ? "default" : "secondary"} className="bg-green-500">
                 {userProfile.isActive ? "Active" : "Inactive"}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {address && `${address.slice(0, 6)}...${address.slice(-4)}`}
-            </p>
+            <p className="text-sm text-muted-foreground">{address}</p>
           </div>
         </div>
 
-        {/* Profile Details */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Registered:</span>
-              <span className="font-medium">
-                {formatDate(userProfile.registrationDate)}
-              </span>
-            </div>
-            
-            <div className="flex items-center gap-2 text-sm">
-              <Activity className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Last Active:</span>
-              <span className="font-medium">
-                {formatLastActivity(userProfile.lastActivity)}
-              </span>
-            </div>
+        <div className="flex justify-between flex-wrap w-full">
+          <div className="flex items-center gap-2 text-sm">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Registered:</span>
+            <span className="font-medium">
+              {formatDate(userProfile.registrationDate)}
+            </span>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-sm">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span className="text-muted-foreground">Status:</span>
-              <Badge variant={userProfile.isActive ? "default" : "secondary"} className="text-xs">
-                {userProfile.isActive ? "Active User" : "Inactive"}
-              </Badge>
-            </div>
-
-            {userProfile.profileImageHash && (
-              <div className="flex items-center gap-2 text-sm">
-                <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                <span className="text-muted-foreground">Profile Image:</span>
-                <Badge variant="outline" className="text-xs">
-                  IPFS
-                </Badge>
-              </div>
-            )}
+          <div className="flex items-center gap-2 text-sm">
+            <Activity className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Last Active:</span>
+            <span className="font-medium">
+              {formatLastActivity(userProfile.lastActivity)}
+            </span>
           </div>
         </div>
 
-        {/* Profile Image Hash (if exists) */}
         {userProfile.profileImageHash && (
           <div className="space-y-2">
             <h4 className="text-sm font-medium">Profile Image Hash</h4>

@@ -12,6 +12,7 @@ import {
 } from "wagmi";
 import { SAFELOCK_CONTRACT } from "../lib/contracts";
 import { registerUser } from "../lib/safelock-contract";
+import { getOperationErrorMessage, OPERATIONS } from "../lib/error-utils";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -125,7 +126,6 @@ export function RegisterFormInner() {
     try {
       // Use simplified registration function
       const contractData = registerUser(
-        address!,
         data.username,
         data.profileImageHash || ""
       );
@@ -192,8 +192,8 @@ export function RegisterFormInner() {
         {(localError || isError) && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {localError || (error as Error)?.message || "Registration failed"}
+            <AlertDescription className="break-words">
+              {localError || getOperationErrorMessage(OPERATIONS.REGISTER, error)}
             </AlertDescription>
           </Alert>
         )}

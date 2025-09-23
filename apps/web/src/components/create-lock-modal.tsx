@@ -21,6 +21,7 @@ import { Label } from "./ui/label";
 import { Alert, AlertDescription } from "./ui/alert";
 import { createSavingsLock } from "../lib/safelock-contract";
 import { CUSD_TOKEN } from "../lib/contracts";
+import { getOperationErrorMessage, OPERATIONS } from "../lib/error-utils";
 import { Plus, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 
 interface CreateLockModalProps {
@@ -349,8 +350,8 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
         {(localError || isError) && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {localError || (error as Error)?.message || "Failed to create lock"}
+            <AlertDescription className="break-words">
+              {localError || getOperationErrorMessage(OPERATIONS.CREATE_LOCK, error)}
             </AlertDescription>
             </Alert>
           )}

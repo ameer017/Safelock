@@ -1,17 +1,32 @@
 import { SAFELOCK_CONTRACT, CONTRACT_CONSTANTS } from './contracts'
+import { writeContractWithReferral } from './divvi'
 import type { Address } from 'viem'
 
-// SafeLock contract interactions (Divvi integration temporarily disabled for testnet testing)
+// SafeLock contract interactions with Divvi referral tracking
 
 /**
- * Register a user (simplified without Divvi referral tracking)
+ * Register a user with Divvi referral tracking (async)
  */
-export const registerUser = (
+export const registerUserWithDivvi = async (
   userAddress: Address,
   username: string,
   profileImageHash: string = ''
 ) => {
-  // This function should be used with useWriteContract hook in components
+  return writeContractWithReferral(userAddress, {
+    address: SAFELOCK_CONTRACT.address,
+    abi: SAFELOCK_CONTRACT.abi,
+    functionName: 'registerUser',
+    args: [username, profileImageHash],
+  })
+}
+
+/**
+ * Register a user (for use with useWriteContract hook)
+ */
+export const registerUser = (
+  username: string,
+  profileImageHash: string = ''
+) => {
   return {
     address: SAFELOCK_CONTRACT.address,
     abi: SAFELOCK_CONTRACT.abi,
@@ -21,7 +36,39 @@ export const registerUser = (
 }
 
 /**
- * Create a savings lock (simplified without Divvi referral tracking)
+ * Create a savings lock with Divvi referral tracking (async)
+ */
+export const createSavingsLockWithDivvi = async (
+  userAddress: Address,
+  lockDuration: number,
+  amount: bigint
+) => {
+  // Validate lock duration
+  if (lockDuration < CONTRACT_CONSTANTS.MIN_LOCK_DURATION) {
+    throw new Error('Lock duration too short')
+  }
+  if (lockDuration > CONTRACT_CONSTANTS.MAX_LOCK_DURATION) {
+    throw new Error('Lock duration too long')
+  }
+
+  // Validate amount
+  if (amount <= 0n) {
+    throw new Error('Amount must be greater than 0')
+  }
+  if (amount > BigInt(CONTRACT_CONSTANTS.MAX_LOCK_AMOUNT)) {
+    throw new Error('Amount exceeds maximum limit')
+  }
+
+  return writeContractWithReferral(userAddress, {
+    address: SAFELOCK_CONTRACT.address,
+    abi: SAFELOCK_CONTRACT.abi,
+    functionName: 'createSavingsLock',
+    args: [BigInt(lockDuration), amount],
+  })
+}
+
+/**
+ * Create a savings lock (for use with useWriteContract hook)
  */
 export const createSavingsLock = (
   lockDuration: number,
@@ -43,7 +90,6 @@ export const createSavingsLock = (
     throw new Error('Amount exceeds maximum limit')
   }
 
-  // This function should be used with useWriteContract hook in components
   return {
     address: SAFELOCK_CONTRACT.address,
     abi: SAFELOCK_CONTRACT.abi,
@@ -53,10 +99,24 @@ export const createSavingsLock = (
 }
 
 /**
- * Withdraw savings (simplified without Divvi referral tracking)
+ * Withdraw savings with Divvi referral tracking (async)
+ */
+export const withdrawSavingsWithDivvi = async (
+  userAddress: Address,
+  lockId: bigint
+) => {
+  return writeContractWithReferral(userAddress, {
+    address: SAFELOCK_CONTRACT.address,
+    abi: SAFELOCK_CONTRACT.abi,
+    functionName: 'withdrawSavings',
+    args: [lockId],
+  })
+}
+
+/**
+ * Withdraw savings (for use with useWriteContract hook)
  */
 export const withdrawSavings = (lockId: bigint) => {
-  // This function should be used with useWriteContract hook in components
   return {
     address: SAFELOCK_CONTRACT.address,
     abi: SAFELOCK_CONTRACT.abi,
@@ -66,13 +126,28 @@ export const withdrawSavings = (lockId: bigint) => {
 }
 
 /**
- * Update user profile (simplified without Divvi referral tracking)
+ * Update user profile with Divvi referral tracking (async)
+ */
+export const updateProfileWithDivvi = async (
+  userAddress: Address,
+  newUsername: string,
+  newProfileImageHash: string = ''
+) => {
+  return writeContractWithReferral(userAddress, {
+    address: SAFELOCK_CONTRACT.address,
+    abi: SAFELOCK_CONTRACT.abi,
+    functionName: 'updateProfile',
+    args: [newUsername, newProfileImageHash],
+  })
+}
+
+/**
+ * Update user profile (for use with useWriteContract hook)
  */
 export const updateProfile = (
   newUsername: string,
   newProfileImageHash: string = ''
 ) => {
-  // This function should be used with useWriteContract hook in components
   return {
     address: SAFELOCK_CONTRACT.address,
     abi: SAFELOCK_CONTRACT.abi,
@@ -82,10 +157,21 @@ export const updateProfile = (
 }
 
 /**
- * Emergency account deactivation (simplified without Divvi referral tracking)
+ * Emergency account deactivation with Divvi referral tracking (async)
+ */
+export const deactivateAccountWithDivvi = async (userAddress: Address) => {
+  return writeContractWithReferral(userAddress, {
+    address: SAFELOCK_CONTRACT.address,
+    abi: SAFELOCK_CONTRACT.abi,
+    functionName: 'deactivateAccount',
+    args: [],
+  })
+}
+
+/**
+ * Emergency account deactivation (for use with useWriteContract hook)
  */
 export const deactivateAccount = () => {
-  // This function should be used with useWriteContract hook in components
   return {
     address: SAFELOCK_CONTRACT.address,
     abi: SAFELOCK_CONTRACT.abi,
@@ -222,4 +308,13 @@ export const formatDuration = (seconds: number) => {
 export const formatAmount = (amount: bigint) => {
   const cusd = Number(amount) / 10**18
   return `${cusd.toFixed(2)} cUSD`
+}
+
+// Divvi-enabled contract functions for mainnet
+export const SafeLockWithDivvi = {
+  registerUser: registerUserWithDivvi,
+  createSavingsLock: createSavingsLockWithDivvi,
+  withdrawSavings: withdrawSavingsWithDivvi,
+  updateProfile: updateProfileWithDivvi,
+  deactivateAccount: deactivateAccountWithDivvi,
 }

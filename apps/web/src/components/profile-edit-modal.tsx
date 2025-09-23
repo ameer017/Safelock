@@ -16,6 +16,7 @@ import { Label } from "./ui/label";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Skeleton } from "./ui/skeleton";
 import { SAFELOCK_CONTRACT } from "../lib/contracts";
+import { getOperationErrorMessage, OPERATIONS } from "../lib/error-utils";
 import { User, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 
@@ -254,8 +255,8 @@ export function ProfileEditModal({ children }: ProfileEditModalProps) {
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {error.message || "Failed to update profile"}
+                <AlertDescription className="break-words">
+                  {getOperationErrorMessage(OPERATIONS.UPDATE_PROFILE, error)}
                 </AlertDescription>
               </Alert>
             )}

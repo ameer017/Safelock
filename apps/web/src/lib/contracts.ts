@@ -1,6 +1,6 @@
 // Contract configuration for SafeLock
 export const SAFELOCK_CONTRACT = {
-  address: "0x8a300e0FBA80d83C3935EEC65233Cdf4D970972d" as `0x${string}`,
+  address: "0xA04fA0b313d3CEcaE1F7E1DcA16eFCC68E2787a9" as `0x${string}`,
   
   "abi": [
     {

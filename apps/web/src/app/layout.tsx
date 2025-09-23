@@ -13,6 +13,11 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'Safelock',
   description: 'Save smarter. Spend wiser',
+  icons: {
+    icon: '/images/safelock-high-resolution-logo-transparent.png',
+    shortcut: '/images/safelock-high-resolution-logo-transparent.png',
+    apple: '/images/safelock-high-resolution-logo-transparent.png',
+  },
 };
 
 export default function RootLayout({

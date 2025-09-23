@@ -13,6 +13,7 @@ import {
 } from "./ui/dialog";
 import { Alert, AlertDescription } from "./ui/alert";
 import { withdrawSavings } from "../lib/safelock-contract";
+import { getOperationErrorMessage, OPERATIONS } from "../lib/error-utils";
 import { CheckCircle, AlertCircle, Loader2, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -69,15 +70,6 @@ export function WithdrawModal({
     }
   }, [writeData]);
 
-  useEffect(() => {
-    if (isTxSuccess && txHash) {
-      setTimeout(() => {
-        handleOpenChange(false);
-        router.refresh();
-      }, 3000);
-    }
-  }, [isTxSuccess, txHash, router]);
-
   const handleOpenChange = useCallback(
     (open: boolean) => {
       if (isPending || isConfirmingTx) {
@@ -92,6 +84,15 @@ export function WithdrawModal({
     },
     [isPending, isConfirmingTx, onOpenChange]
   );
+
+  useEffect(() => {
+    if (isTxSuccess && txHash) {
+      setTimeout(() => {
+        handleOpenChange(false);
+        router.refresh();
+      }, 3000);
+    }
+  }, [isTxSuccess, txHash, router, handleOpenChange]);
 
   const handleWithdraw = () => {
     if (!isLockReady()) {
@@ -162,8 +163,8 @@ export function WithdrawModal({
             {(localError || error) && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  {localError || error?.message || "An error occurred"}
+                <AlertDescription className="break-words">
+                  {localError || getOperationErrorMessage(OPERATIONS.WITHDRAW, error)}
                 </AlertDescription>
               </Alert>
             )}

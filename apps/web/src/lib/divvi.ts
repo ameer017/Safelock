@@ -13,7 +13,7 @@ export const createDivviWalletClient = async () => {
 
   // Create a temporary client to get the current chain ID
   const tempClient = createWalletClient({
-    chain: celoAlfajores, // Default to Alfajores for initial setup
+    chain: celo, 
     transport: custom(window.ethereum),
   })
 

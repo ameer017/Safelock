@@ -141,6 +141,8 @@ export function ProfileEditModal({ children }: ProfileEditModalProps) {
         description: "Your profile has been updated successfully.",
       });
       setOpen(false);
+      // Force page reload to ensure all components get updated profile data
+      window.location.reload();
     }
   }, [isSuccess, toast]);
 

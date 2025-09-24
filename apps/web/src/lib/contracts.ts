@@ -1013,7 +1013,7 @@ export const SAFELOCK_CONTRACT = {
 
 // Celo cUSD token configuration for Alfajores testnet
 export const CUSD_TOKEN = {
-  address: "0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1" as `0x${string}`,
+  address: "0x765de816845861e75a25fca122bb6898b8b1282a" as `0x${string}`,
   
   abi: [
     {

@@ -20,7 +20,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Alert, AlertDescription } from "./ui/alert";
 import { createSavingsLock } from "../lib/safelock-contract";
-import { CUSD_TOKEN } from "../lib/contracts";
+import { CUSD_TOKEN, SAFELOCK_CONTRACT } from "../lib/contracts";
 import { getOperationErrorMessage, OPERATIONS } from "../lib/error-utils";
 import { Plus, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 
@@ -33,7 +33,7 @@ const calculateDuration = (startDate: string, endDate: string): number => {
   const end = new Date(endDate);
   const diffInMs = end.getTime() - start.getTime();
   return Math.floor(diffInMs / 1000);
-}
+};
 
 const formatDateForInput = (date: Date): string => {
   return date.toISOString().split("T")[0];
@@ -48,25 +48,48 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
   const [mounted, setMounted] = useState(false);
 
   const { address, isConnected } = useAccount();
-  const { writeContract, isPending, isError, error, data: writeData } = useWriteContract();
+  const {
+    writeContract,
+    isPending,
+    isError,
+    error,
+    data: writeData,
+  } = useWriteContract();
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
-  const [approvalTxHash, setApprovalTxHash] = useState<`0x${string}` | undefined>();
+  const [approvalTxHash, setApprovalTxHash] = useState<
+    `0x${string}` | undefined
+  >();
   const [needsApproval, setNeedsApproval] = useState(false);
   const [approvalCompleted, setApprovalCompleted] = useState(false);
-  
+
+  // Check if user is registered
+  const { data: isUserRegistered } = useReadContract({
+    address: SAFELOCK_CONTRACT.address,
+    abi: SAFELOCK_CONTRACT.abi,
+    functionName: "isUserRegistered",
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
+    },
+  });
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash: txHash,
   });
-  const { isLoading: isApproving, isSuccess: isApprovalSuccess } = useWaitForTransactionReceipt({
-    hash: approvalTxHash,
-  });
+  const { isLoading: isApproving, isSuccess: isApprovalSuccess } =
+    useWaitForTransactionReceipt({
+      hash: approvalTxHash,
+    });
 
   const [currentAmount, setCurrentAmount] = useState<bigint>(0n);
   const { data: currentAllowance } = useReadContract({
     address: CUSD_TOKEN.address,
     abi: CUSD_TOKEN.abi,
     functionName: "allowance",
-    args: address && currentAmount > 0n ? [address, "0x8a300e0FBA80d83C3935EEC65233Cdf4D970972d"] : undefined,
+    args:
+      address && currentAmount > 0n
+        ? [address, SAFELOCK_CONTRACT.address]
+        : undefined,
     query: {
       enabled: !!address && currentAmount > 0n,
     },
@@ -86,7 +109,7 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
   }, [amount]);
 
   useEffect(() => {
-    if (writeData && typeof writeData === 'string') {
+    if (writeData && typeof writeData === "string") {
       if (needsApproval && !approvalTxHash) {
         setApprovalTxHash(writeData as `0x${string}`);
       } else if (!needsApproval || approvalCompleted) {
@@ -95,25 +118,35 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
     }
   }, [writeData, needsApproval, approvalTxHash, approvalCompleted]);
 
-
   useEffect(() => {
     if (isApprovalSuccess && needsApproval && !approvalCompleted) {
       setApprovalCompleted(true);
-      setLocalError(""); 
-      
+      setLocalError("");
+
       const durationInSeconds = calculateDuration(startDate, endDate);
       const amountInWei = BigInt(parseFloat(amount) * 1e18);
-      
+
       try {
         const contractData = createSavingsLock(durationInSeconds, amountInWei);
         writeContract(contractData);
       } catch (error) {
         console.error("❌ Failed to create lock after approval:", error);
-        setLocalError(`Failed to create lock: ${error instanceof Error ? error.message : "Unknown error"}`);
+        setLocalError(
+          `Failed to create lock: ${
+            error instanceof Error ? error.message : "Unknown error"
+          }`
+        );
       }
     }
-  }, [isApprovalSuccess, needsApproval, approvalCompleted, startDate, endDate, amount, writeContract]);
-
+  }, [
+    isApprovalSuccess,
+    needsApproval,
+    approvalCompleted,
+    startDate,
+    endDate,
+    amount,
+    writeContract,
+  ]);
 
   useEffect(() => {
     if (isSuccess && txHash) {
@@ -126,34 +159,42 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
       setApprovalTxHash(undefined);
       setNeedsApproval(false);
       setApprovalCompleted(false);
-      
+
       window.location.reload();
     }
   }, [isSuccess, txHash]);
 
-  const handleOpenChange = useCallback((open: boolean) => {
-    if (isPending || isConfirming || isApproving) {
-      return;
-    }
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (isPending || isConfirming || isApproving) {
+        return;
+      }
 
-    setIsOpen(open);
-    
-    if (!open) {
-      setAmount("");
-      setStartDate(formatDateForInput(new Date()));
-      setEndDate("");
-      setLocalError("");
-      setNeedsApproval(false);
-      setApprovalCompleted(false);
-      setApprovalTxHash(undefined);
-      setTxHash(undefined);
-    }
-  }, [isPending, isConfirming, isApproving]);
+      setIsOpen(open);
+
+      if (!open) {
+        setAmount("");
+        setStartDate(formatDateForInput(new Date()));
+        setEndDate("");
+        setLocalError("");
+        setNeedsApproval(false);
+        setApprovalCompleted(false);
+        setApprovalTxHash(undefined);
+        setTxHash(undefined);
+      }
+    },
+    [isPending, isConfirming, isApproving]
+  );
 
   useEffect(() => {
-    if ((txHash || writeData) && !isSuccess && !isPending && !isConfirming && !isApproving) {
+    if (
+      (txHash || writeData) &&
+      !isSuccess &&
+      !isPending &&
+      !isConfirming &&
+      !isApproving
+    ) {
       const timer = setTimeout(() => {
-       
         handleOpenChange(false);
 
         window.location.reload();
@@ -161,7 +202,15 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
 
       return () => clearTimeout(timer);
     }
-  }, [txHash, writeData, isSuccess, isPending, isConfirming, isApproving, handleOpenChange]);
+  }, [
+    txHash,
+    writeData,
+    isSuccess,
+    isPending,
+    isConfirming,
+    isApproving,
+    handleOpenChange,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,36 +255,45 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
       return;
     }
 
+    if (!isUserRegistered) {
+      setLocalError(
+        "Please register your account first before creating a lock"
+      );
+      return;
+    }
+
     const amountInWei = BigInt(parseFloat(amount) * 1e18);
 
     try {
-      const allowance = currentAllowance as bigint || 0n;
-      
+      const allowance = (currentAllowance as bigint) || 0n;
+
       if (allowance < amountInWei) {
         setNeedsApproval(true);
         setApprovalCompleted(false);
-        
+
         const approvalData = {
           address: CUSD_TOKEN.address,
           abi: CUSD_TOKEN.abi,
           functionName: "approve" as const,
-          args: ["0x8a300e0FBA80d83C3935EEC65233Cdf4D970972d" as `0x${string}`, amountInWei] as const,
+          args: [SAFELOCK_CONTRACT.address, amountInWei] as const,
         };
-        
+
         writeContract(approvalData as any);
         return;
       }
-      
+
       setNeedsApproval(false);
       const contractData = createSavingsLock(durationInSeconds, amountInWei);
       writeContract(contractData);
-      
     } catch (error) {
       console.error("❌ Failed to create lock:", error);
-      setLocalError(`Failed to create lock: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setLocalError(
+        `Failed to create lock: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   };
-
 
   const isProcessing = isPending || isConfirming || isApproving;
 
@@ -250,12 +308,23 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
         <DialogHeader>
           <DialogTitle>Create New Savings Lock</DialogTitle>
           <DialogDescription>
-            Lock your cUSD tokens for a specified duration to earn rewards and
-            build discipline. You&apos;ll need to approve the contract to spend your tokens first.
+            Lock your cUSD tokens for a specified duration to build discipline.
+            You&apos;ll need to approve the contract to spend your tokens first.
           </DialogDescription>
         </DialogHeader>
 
-        {amount && currentAmount > 0n && (
+        {address && (
+          <Alert variant={isUserRegistered ? "default" : "destructive"}>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {isUserRegistered
+                ? "✅ Account is registered and ready to create locks"
+                : "❌ Please register your account first before creating a lock"}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {amount && currentAmount > 0n && isUserRegistered && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
@@ -265,7 +334,6 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
             </AlertDescription>
           </Alert>
         )}
-
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
@@ -328,31 +396,32 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
             </div>
           )}
 
-        {/* Approval Status Messages */}
-        {needsApproval && isApproving && (
-          <Alert>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <AlertDescription>
-              Waiting for approval transaction to be confirmed...
-            </AlertDescription>
-          </Alert>
-        )}
+          {/* Approval Status Messages */}
+          {needsApproval && isApproving && (
+            <Alert>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <AlertDescription>
+                Waiting for approval transaction to be confirmed...
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {needsApproval && isApprovalSuccess && !approvalCompleted && (
-          <Alert>
-            <CheckCircle className="h-4 w-4" />
-            <AlertDescription>
-              ✅ Approval successful! Now creating your savings lock...
-            </AlertDescription>
-          </Alert>
-        )}
+          {needsApproval && isApprovalSuccess && !approvalCompleted && (
+            <Alert>
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>
+                ✅ Approval successful! Now creating your savings lock...
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {(localError || isError) && (
+          {(localError || isError) && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-            <AlertDescription className="break-words">
-              {localError || getOperationErrorMessage(OPERATIONS.CREATE_LOCK, error)}
-            </AlertDescription>
+              <AlertDescription className="break-words">
+                {localError ||
+                  getOperationErrorMessage(OPERATIONS.CREATE_LOCK, error)}
+              </AlertDescription>
             </Alert>
           )}
 
@@ -360,32 +429,38 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
             <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
-              🎉 Lock created successfully! Your funds are now locked.
-            </AlertDescription>
-          </Alert>
-        )}
+                🎉 Lock created successfully! Your funds are now locked.
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {!isPending && !isConfirming && !isApproving && !isSuccess && (txHash || writeData) && (
-          <Alert>
-            <CheckCircle className="h-4 w-4" />
-            <AlertDescription>
-              Transaction submitted! If your transaction was successful on the blockchain but this modal is still open, you can safely close it.
-              <div className="mt-2">
-                <Button 
-                  size="sm" 
-                  onClick={() => {
-                    handleOpenChange(false);
+          {!isPending &&
+            !isConfirming &&
+            !isApproving &&
+            !isSuccess &&
+            (txHash || writeData) && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Transaction submitted! If your transaction was successful on
+                  the blockchain but this modal is still open, you can safely
+                  close it.
+                  <div className="mt-2">
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        handleOpenChange(false);
 
-                    window.location.reload();
-                  }}
-                  className="w-full"
-                >
-                  Close Modal & Refresh
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
+                        window.location.reload();
+                      }}
+                      className="w-full"
+                    >
+                      Close Modal & Refresh
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
 
           <div className="flex justify-end space-x-2">
             <Button
@@ -396,11 +471,15 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isProcessing}>
+            <Button type="submit" disabled={isProcessing || !isUserRegistered}>
               {isProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isApproving ? "Approving..." : isPending ? "Creating..." : "Confirming..."}
+                  {isApproving
+                    ? "Approving..."
+                    : isPending
+                    ? "Creating..."
+                    : "Confirming..."}
                 </>
               ) : needsApproval && !isApprovalSuccess ? (
                 <>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { useRouter } from "next/navigation";
 import {
   useAccount,
   useReadContract,
@@ -49,6 +50,7 @@ export function RegisterFormInner() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [checkUsername, setCheckUsername] = useState<string>("");
 
+  const router = useRouter();
   const { address, isConnected } = useAccount();
   const { writeContract, isPending, isError, error, data: writeData } = useWriteContract();
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
@@ -138,15 +140,17 @@ export function RegisterFormInner() {
     }
   };
 
-  // Reset form when transaction is successful
+  // Reset form and navigate to dashboard when transaction is successful
   useEffect(() => {
     if (isSuccess && txHash) {
       setIsOpen(false);
       reset();
       setLocalError(null);
       setTxHash(undefined);
+      // Navigate to dashboard after successful registration
+      router.push("/dashboard");
     }
-  }, [isSuccess, txHash, reset]);
+  }, [isSuccess, txHash, reset, router]);
 
   // Capture transaction hash when writeData changes
   useEffect(() => {

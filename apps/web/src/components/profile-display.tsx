@@ -6,6 +6,8 @@ import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import { Alert, AlertDescription } from "./ui/alert";
+import { Button } from "./ui/button";
+import { ProfileEditModal } from "./profile-edit-modal";
 import { SAFELOCK_CONTRACT } from "../lib/contracts";
 import {
   User,
@@ -148,14 +150,22 @@ export function ProfileDisplay({ className }: ProfileDisplayProps) {
               </AvatarFallback>
             )}
           </Avatar>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
+          <div className="space-y-1 flex-1">
+            <div className="flex items-center justify-start gap-4">
               <h3 className="text-xl font-semibold">{userProfile.username}</h3>
               <Badge variant={userProfile.isActive ? "default" : "secondary"} className="bg-green-500">
                 {userProfile.isActive ? "Active" : "Inactive"}
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">{address}</p>
+          </div>
+          <div className="flex-shrink-0">
+            <ProfileEditModal>
+              <Button>
+                <User className="mr-2 h-4 w-4" />
+                Edit Profile
+              </Button>
+            </ProfileEditModal>
           </div>
         </div>
 

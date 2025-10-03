@@ -15,7 +15,6 @@ import { Alert, AlertDescription } from "./ui/alert";
 import { withdrawSavings } from "../lib/safelock-contract";
 import { getOperationErrorMessage, OPERATIONS } from "../lib/error-utils";
 import { CheckCircle, AlertCircle, Loader2, Clock } from "lucide-react";
-import { useRouter } from "next/navigation";
 
 interface WithdrawModalProps {
   children: React.ReactNode;
@@ -34,7 +33,6 @@ export function WithdrawModal({
   isOpen,
   onOpenChange,
 }: WithdrawModalProps) {
-  const router = useRouter();
   const [localError, setLocalError] = useState<string>("");
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
 
@@ -89,10 +87,10 @@ export function WithdrawModal({
     if (isTxSuccess && txHash) {
       setTimeout(() => {
         handleOpenChange(false);
-        router.refresh();
+        window.location.reload();
       }, 3000);
     }
-  }, [isTxSuccess, txHash, router, handleOpenChange]);
+  }, [isTxSuccess, txHash, handleOpenChange]);
 
   const handleWithdraw = () => {
     if (!isLockReady()) {

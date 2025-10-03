@@ -13,16 +13,14 @@ import {
 } from "../../components/ui/card";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { ProfileDisplay } from "../../components/profile-display";
-import { ProfileEditModal } from "../../components/profile-edit-modal";
 import { AccountDeactivationModal } from "../../components/account-deactivation-modal";
 import { SAFELOCK_CONTRACT } from "../../lib/contracts";
 import {
   AlertCircle,
   Loader2,
-  Settings,
-  User,
   AlertTriangle,
   ArrowLeft,
+  Activity,
 } from "lucide-react";
 
 function ProfileContent() {
@@ -102,55 +100,83 @@ function ProfileContent() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Profile Settings
-          </h1>
-          <p className="text-muted-foreground">
-            Manage your profile information and account settings.
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">
+                Profile Settings
+              </h1>
+              <p className="text-muted-foreground">
+                Manage your profile information and account settings.
+              </p>
+            </div>
+            <AccountDeactivationModal>
+              <Button variant="destructive">
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Deactivate Account
+              </Button>
+            </AccountDeactivationModal>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <ProfileDisplay />
-          </div>
+        <div className="space-y-6">
+          <ProfileDisplay />
 
-          <div className="space-y-6">
-            <CardContent>
-              <ProfileEditModal>
-                <Button className="w-full">
-                  <User className="mr-2 h-4 w-4" />
-                  Edit Profile
-                </Button>
-              </ProfileEditModal>
-            </CardContent>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Settings
-                </CardTitle>
-                <CardDescription>
-                  Manage your account preferences
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Emergency Options</h4>
-                  <p className="text-xs text-muted-foreground">
-                    Use these options only in emergency situations
-                  </p>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Recent Login Logs
+              </CardTitle>
+              <CardDescription>
+                Your most recent login activities
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div>
+                      <p className="text-sm font-medium">Current Session</p>
+                      <p className="text-xs text-muted-foreground">Active now</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">11 minutes ago</p>
+                    <p className="text-xs text-muted-foreground">IP: 192.168.1.1</p>
+                  </div>
                 </div>
-                <AccountDeactivationModal>
-                  <Button className="w-full" variant="destructive">
-                    <AlertTriangle className="mr-2 h-4 w-4" />
-                    Deactivate Account
-                  </Button>
-                </AccountDeactivationModal>
-              </CardContent>
-            </Card>
-          </div>
+                
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <div>
+                      <p className="text-sm font-medium">Previous Session</p>
+                      <p className="text-xs text-muted-foreground">Logged out</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">2 hours ago</p>
+                    <p className="text-xs text-muted-foreground">IP: 192.168.1.1</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <div>
+                      <p className="text-sm font-medium">Previous Session</p>
+                      <p className="text-xs text-muted-foreground">Logged out</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground">1 day ago</p>
+                    <p className="text-xs text-muted-foreground">IP: 192.168.1.2</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </main>

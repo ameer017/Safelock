@@ -59,6 +59,11 @@ contract SafeLock {
     bool private locked;
     // The cUSD token contract
     IERC20 public cUSDToken;
+    IERC20 public USDTToken;
+    IERC20 public CGHSToken;
+    IERC20 public CNGNToken;
+    IERC20 public CKESToken;
+
 
     // Mapping from lock ID to SavingsLock
     mapping(uint256 => SavingsLock) public savingsLocks;

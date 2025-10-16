@@ -1,7 +1,8 @@
+import { BaseToken } from "./token.base";
 // Contract configuration for SafeLock
 export const SAFELOCK_CONTRACT = {
   address: "0xA04fA0b313d3CEcaE1F7E1DcA16eFCC68E2787a9" as `0x${string}`,
-  
+
   "abi": [
     {
       "inputs": [
@@ -1013,52 +1014,41 @@ export const SAFELOCK_CONTRACT = {
 
 // Celo cUSD token configuration for Alfajores testnet
 export const CUSD_TOKEN = {
+  ...BaseToken,
   address: "0x765de816845861e75a25fca122bb6898b8b1282a" as `0x${string}`,
-  
-  abi: [
-    {
-      "inputs": [
-        {"internalType": "address", "name": "owner", "type": "address"},
-        {"internalType": "address", "name": "spender", "type": "address"}
-      ],
-      "name": "allowance",
-      "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {"internalType": "address", "name": "spender", "type": "address"},
-        {"internalType": "uint256", "name": "amount", "type": "uint256"}
-      ],
-      "name": "approve",
-      "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
-      "name": "balanceOf",
-      "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "decimals",
-      "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "symbol",
-      "outputs": [{"internalType": "string", "name": "", "type": "string"}],
-      "stateMutability": "view",
-      "type": "function"
-    }
-  ] as const
-}
+  symbol: "cUSD",
+  name: "Celo Dollar",
+};
+
+export const USDT_TOKEN = {
+  ...BaseToken,
+  address: "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e" as `0x${string}`,
+  symbol: "USDT",
+  name: "Tether",
+};
+
+export const CGHS_TOKEN = {
+  ...BaseToken,
+  address: "0xfAeA5F3404bbA20D3cc2f8C4B0A888F55a3c7313" as `0x${string}`,
+  symbol: "CGHST",
+  name: "Celo Ghanaian Cedis",
+};
+
+export const CKES_TOKEN = {
+  ...BaseToken,
+  address: "0x456a3D042C0DbD3db53D5489e98dFb038553B0d0" as `0x${string}`,
+  symbol: "CKES",
+  name: "Celo Kenyan Shillings",
+};
+
+export const CNGN_TOKEN = {
+  ...BaseToken,
+  address: "0xE2702Bd97ee33c88c8f6f92DA3B733608aa76F71" as `0x${string}`,
+  symbol: "CNGN",
+  name: "Celo Nigerian Naira",
+};
+
+
 
 // Contract constants
 export const CONTRACT_CONSTANTS = {

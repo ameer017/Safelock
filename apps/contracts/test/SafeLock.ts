@@ -3,7 +3,6 @@ import { ethers } from "hardhat";
 import { SafeLock } from "../typechain-types";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import "@nomicfoundation/hardhat-chai-matchers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("SafeLock", function () {
   let safeLock: SafeLock;
@@ -11,6 +10,10 @@ describe("SafeLock", function () {
   let user1: SignerWithAddress;
   let user2: SignerWithAddress;
   let mockCUSD: any;
+  let mockUSDT: any;
+  let mockCGHS: any;
+  let mockCNGN: any;
+  let mockCKES: any;
 
   const LOCK_DURATION = 7 * 24 * 60 * 60; // 7 days
   const DEPOSIT_AMOUNT = ethers.parseEther("1000"); // 1000 cUSD
@@ -21,16 +24,35 @@ describe("SafeLock", function () {
   beforeEach(async function () {
     [owner, user1, user2] = await ethers.getSigners();
 
-    // Deploy mock cUSD token
-    const MockCUSD = await ethers.getContractFactory("MockERC20");
-    mockCUSD = await MockCUSD.deploy("Celo Dollar", "cUSD");
+    // Deploy all mock tokens
+    const MockERC20Factory = await ethers.getContractFactory("MockERC20");
+    mockCUSD = await MockERC20Factory.deploy("Celo Dollar", "cUSD");
+    mockUSDT = await MockERC20Factory.deploy("Tether USD", "USDT");
+    mockCGHS = await MockERC20Factory.deploy("Celo Ghana Cedi", "cGHS");
+    mockCNGN = await MockERC20Factory.deploy("Celo Nigerian Naira", "cNGN");
+    mockCKES = await MockERC20Factory.deploy("Celo Kenyan Shilling", "cKES");
 
     const SafeLockFactory = await ethers.getContractFactory("SafeLock");
-    safeLock = await SafeLockFactory.deploy(await mockCUSD.getAddress(), owner.address);
+    safeLock = await SafeLockFactory.deploy(
+      await mockCUSD.getAddress(),
+      await mockUSDT.getAddress(),
+      await mockCGHS.getAddress(),
+      await mockCNGN.getAddress(),
+      await mockCKES.getAddress(),
+      owner.address
+    );
 
-    // Mint cUSD to users for testing
+    // Mint tokens to users for testing
     await mockCUSD.mint(user1.address, ethers.parseEther("10000"));
     await mockCUSD.mint(user2.address, ethers.parseEther("10000"));
+    await mockUSDT.mint(user1.address, ethers.parseEther("10000"));
+    await mockUSDT.mint(user2.address, ethers.parseEther("10000"));
+    await mockCGHS.mint(user1.address, ethers.parseEther("10000"));
+    await mockCGHS.mint(user2.address, ethers.parseEther("10000"));
+    await mockCNGN.mint(user1.address, ethers.parseEther("10000"));
+    await mockCNGN.mint(user2.address, ethers.parseEther("10000"));
+    await mockCKES.mint(user1.address, ethers.parseEther("10000"));
+    await mockCKES.mint(user2.address, ethers.parseEther("10000"));
   });
 
   describe("Deployment", function () {
@@ -44,8 +66,88 @@ describe("SafeLock", function () {
       expect(penaltyPool.totalActiveSavings).to.equal(0);
     });
 
-    it("Should set cUSD token address", async function () {
+    it("Should set all token addresses correctly", async function () {
       expect(await safeLock.cUSDToken()).to.equal(await mockCUSD.getAddress());
+      expect(await safeLock.USDTToken()).to.equal(await mockUSDT.getAddress());
+      expect(await safeLock.CGHSToken()).to.equal(await mockCGHS.getAddress());
+      expect(await safeLock.CNGNToken()).to.equal(await mockCNGN.getAddress());
+      expect(await safeLock.CKESToken()).to.equal(await mockCKES.getAddress());
+    });
+
+    it("Should reject deployment with zero address for any token", async function () {
+      const SafeLockFactory = await ethers.getContractFactory("SafeLock");
+      
+      // Test zero address for cUSD token
+      await expect(
+        SafeLockFactory.deploy(
+          ethers.ZeroAddress,
+          await mockUSDT.getAddress(),
+          await mockCGHS.getAddress(),
+          await mockCNGN.getAddress(),
+          await mockCKES.getAddress(),
+          owner.address
+        )
+      ).to.be.revertedWith("Invalid token address");
+
+      // Test zero address for USDT token
+      await expect(
+        SafeLockFactory.deploy(
+          await mockCUSD.getAddress(),
+          ethers.ZeroAddress,
+          await mockCGHS.getAddress(),
+          await mockCNGN.getAddress(),
+          await mockCKES.getAddress(),
+          owner.address
+        )
+      ).to.be.revertedWith("Invalid token address");
+
+      // Test zero address for CGHS token
+      await expect(
+        SafeLockFactory.deploy(
+          await mockCUSD.getAddress(),
+          await mockUSDT.getAddress(),
+          ethers.ZeroAddress,
+          await mockCNGN.getAddress(),
+          await mockCKES.getAddress(),
+          owner.address
+        )
+      ).to.be.revertedWith("Invalid token address");
+
+      // Test zero address for CNGN token
+      await expect(
+        SafeLockFactory.deploy(
+          await mockCUSD.getAddress(),
+          await mockUSDT.getAddress(),
+          await mockCGHS.getAddress(),
+          ethers.ZeroAddress,
+          await mockCKES.getAddress(),
+          owner.address
+        )
+      ).to.be.revertedWith("Invalid token address");
+
+      // Test zero address for CKES token
+      await expect(
+        SafeLockFactory.deploy(
+          await mockCUSD.getAddress(),
+          await mockUSDT.getAddress(),
+          await mockCGHS.getAddress(),
+          await mockCNGN.getAddress(),
+          ethers.ZeroAddress,
+          owner.address
+        )
+      ).to.be.revertedWith("Invalid token address");
+
+      // Test zero address for owner
+      await expect(
+        SafeLockFactory.deploy(
+          await mockCUSD.getAddress(),
+          await mockUSDT.getAddress(),
+          await mockCGHS.getAddress(),
+          await mockCNGN.getAddress(),
+          await mockCKES.getAddress(),
+          ethers.ZeroAddress
+        )
+      ).to.be.revertedWith("Invalid owner address");
     });
 
     it("Should initialize pause state correctly", async function () {

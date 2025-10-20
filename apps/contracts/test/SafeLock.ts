@@ -20,6 +20,7 @@ describe("SafeLock", function () {
   const USERNAME1 = "alice_saves";
   const USERNAME2 = "bob_invests";
   const PROFILE_IMAGE_HASH = "QmHash123...";
+  const LOCK_TITLE = "Emergency Fund";
 
   beforeEach(async function () {
     [owner, user1, user2] = await ethers.getSigners();
@@ -279,7 +280,7 @@ describe("SafeLock", function () {
   describe("Creating Savings Locks (with registration requirement)", function () {
     it("Should reject unregistered users", async function () {
       await expect(
-        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT)
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE)
       ).to.be.revertedWith("User not registered");
     });
 
@@ -289,18 +290,57 @@ describe("SafeLock", function () {
       // Approve cUSD spending
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
       
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE);
       
       const lockInfo = await safeLock.userLockInfo(user1.address);
       expect(lockInfo.totalActiveAmount).to.equal(DEPOSIT_AMOUNT);
       expect(lockInfo.totalActiveLocks).to.equal(1);
     });
 
+    it("Should store and retrieve lock title correctly", async function () {
+      await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
+      await mockCUSD.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
+      
+      const customTitle = "Vacation Savings 2025";
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, customTitle);
+      
+      const lockDetails = await safeLock.getLockDetails(0);
+      expect(lockDetails.title).to.equal(customTitle);
+    });
+
+    it("Should reject empty title", async function () {
+      await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
+      
+      await expect(
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, "")
+      ).to.be.revertedWith("Title cannot be empty");
+    });
+
+    it("Should reject title that's too long", async function () {
+      await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
+      
+      const longTitle = "a".repeat(51); // 51 characters (over 50 limit)
+      await expect(
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, longTitle)
+      ).to.be.revertedWith("Title too long");
+    });
+
+    it("Should accept title at maximum length", async function () {
+      await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
+      await mockCUSD.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
+      
+      const maxTitle = "a".repeat(50); // Exactly 50 characters
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, maxTitle);
+      
+      const lockDetails = await safeLock.getLockDetails(0);
+      expect(lockDetails.title).to.equal(maxTitle);
+    });
+
     it("Should reject zero amount deposits", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
       
       await expect(
-        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, 0)
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, 0, LOCK_TITLE)
       ).to.be.revertedWith("Amount must be greater than 0");
     });
 
@@ -309,7 +349,7 @@ describe("SafeLock", function () {
       
       const minDuration = await safeLock.MIN_LOCK_DURATION();
       await expect(
-        safeLock.connect(user1).createSavingsLock(minDuration - 1n, DEPOSIT_AMOUNT)
+        safeLock.connect(user1).createSavingsLock(minDuration - 1n, DEPOSIT_AMOUNT, LOCK_TITLE)
       ).to.be.revertedWith("Invalid lock duration");
     });
 
@@ -318,7 +358,7 @@ describe("SafeLock", function () {
       
       const maxDuration = await safeLock.MAX_LOCK_DURATION();
       await expect(
-        safeLock.connect(user1).createSavingsLock(maxDuration + 1n, DEPOSIT_AMOUNT)
+        safeLock.connect(user1).createSavingsLock(maxDuration + 1n, DEPOSIT_AMOUNT, LOCK_TITLE)
       ).to.be.revertedWith("Invalid lock duration");
     });
 
@@ -327,7 +367,7 @@ describe("SafeLock", function () {
       
       const maxAmount = await safeLock.MAX_LOCK_AMOUNT();
       await expect(
-        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, maxAmount + 1n)
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, maxAmount + 1n, LOCK_TITLE)
       ).to.be.revertedWith("Amount exceeds maximum limit");
     });
 
@@ -339,12 +379,12 @@ describe("SafeLock", function () {
       
       // Create maximum allowed locks
       for (let i = 0; i < maxLocks; i++) {
-        await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, ethers.parseEther("100"));
+        await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, ethers.parseEther("100"), `Lock ${i + 1}`);
       }
       
       // Try to create one more
       await expect(
-        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, ethers.parseEther("100"))
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, ethers.parseEther("100"), "Extra Lock")
       ).to.be.revertedWith("Too many locks for user");
     });
   });
@@ -353,7 +393,7 @@ describe("SafeLock", function () {
     beforeEach(async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE);
     });
 
     it("Should return user locks with details", async function () {
@@ -394,7 +434,7 @@ describe("SafeLock", function () {
     it("Should apply 0.001% penalty on early withdrawal", async function () {
       const lockAmount = ethers.parseEther("1000000"); // 1M tokens
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), lockAmount);
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount, "Big Savings");
 
       const initialBalance = await mockCUSD.balanceOf(user1.address);
       
@@ -424,7 +464,7 @@ describe("SafeLock", function () {
       for (let i = 0; i < testCases.length; i++) {
         const amount = testCases[i];
         await mockCUSD.connect(user1).approve(await safeLock.getAddress(), amount);
-        await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, amount);
+        await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, amount, `Lock ${i + 1}`);
 
         const balanceBefore = await mockCUSD.balanceOf(user1.address);
         await safeLock.connect(user1).withdrawSavings(i);
@@ -440,7 +480,7 @@ describe("SafeLock", function () {
     it("Should handle zero penalty for very small amounts", async function () {
       const smallAmount = 50000n; // Less than 100000, will result in 0 penalty
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), smallAmount);
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, smallAmount);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, smallAmount, "Tiny Lock");
 
       const balanceBefore = await mockCUSD.balanceOf(user1.address);
       await safeLock.connect(user1).withdrawSavings(0);
@@ -453,7 +493,7 @@ describe("SafeLock", function () {
     it("Should not apply penalty after lock duration expires", async function () {
       const lockAmount = ethers.parseEther("1000000");
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), lockAmount);
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount, "Time Locked");
 
       // Fast forward past the lock duration
       await ethers.provider.send("evm_increaseTime", [LOCK_DURATION + 1]);
@@ -470,7 +510,7 @@ describe("SafeLock", function () {
     it("Should emit correct penalty amount in SavingsWithdrawn event", async function () {
       const lockAmount = ethers.parseEther("1000000");
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), lockAmount);
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount, "Test Lock");
 
       const expectedPenalty = lockAmount / 100000n;
       const expectedWithdrawal = lockAmount - expectedPenalty;
@@ -487,7 +527,7 @@ describe("SafeLock", function () {
     beforeEach(async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE);
     });
 
     it("Should allow user to deactivate account", async function () {
@@ -571,7 +611,7 @@ describe("SafeLock", function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
       
       await expect(
-        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT)
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE)
       ).to.be.revertedWith("Contract is paused");
     });
 

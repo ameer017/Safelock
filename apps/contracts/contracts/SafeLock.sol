@@ -31,6 +31,7 @@ contract SafeLock {
         bool isActive;
         bool isWithdrawn;
         uint256 penaltyAmount;
+        string title; // Custom title for the lock
     }
 
     struct PenaltyPool {
@@ -89,6 +90,7 @@ contract SafeLock {
     uint256 public constant MAX_LOCK_AMOUNT = 1000000 * 10 ** 18; // 1M cUSD max per lock
     uint256 public constant TIME_BUFFER = 300; // 5 minutes buffer for timestamp manipulation
     uint256 public constant MAX_USER_LOCKS = 20; // Maximum locks per user
+    uint256 public constant MAX_LOCK_TITLE_LENGTH = 50; // Maximum characters for lock title
 
     // Events
     event SavingsLocked(
@@ -96,7 +98,8 @@ contract SafeLock {
         address indexed owner,
         uint256 amount,
         uint256 lockTime,
-        uint256 unlockTime
+        uint256 unlockTime,
+        string title
     );
 
     event SavingsWithdrawn(
@@ -459,10 +462,12 @@ contract SafeLock {
      * @dev Create a new savings lock (now requires user registration)
      * @param lockDuration Duration to lock funds (in seconds)
      * @param amount Amount of cUSD to lock
+     * @param title Custom title for the lock (1-100 characters)
      */
     function createSavingsLock(
         uint256 lockDuration,
-        uint256 amount
+        uint256 amount,
+        string memory title
     ) external reentrancyGuard whenNotPaused withinUserLimits(msg.sender) {
         require(userProfiles[msg.sender].isActive, "User not registered");
         require(amount > 0, "Amount must be greater than 0");
@@ -471,6 +476,11 @@ contract SafeLock {
             lockDuration >= MIN_LOCK_DURATION &&
                 lockDuration <= MAX_LOCK_DURATION,
             "Invalid lock duration"
+        );
+        require(bytes(title).length > 0, "Title cannot be empty");
+        require(
+            bytes(title).length <= MAX_LOCK_TITLE_LENGTH,
+            "Title too long"
         );
 
         // Transfer cUSD from user to contract
@@ -487,7 +497,8 @@ contract SafeLock {
             unlockTime: unlockTime,
             isActive: true,
             isWithdrawn: false,
-            penaltyAmount: 0
+            penaltyAmount: 0,
+            title: title
         });
 
         savingsLocks[lockId] = newLock;
@@ -513,7 +524,8 @@ contract SafeLock {
             msg.sender,
             amount,
             block.timestamp,
-            unlockTime
+            unlockTime,
+            title
         );
 
         emit PenaltyPoolUpdated(

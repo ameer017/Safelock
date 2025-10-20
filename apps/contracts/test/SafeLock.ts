@@ -384,6 +384,105 @@ describe("SafeLock", function () {
     });
   });
 
+  describe("Early Withdrawal with Penalty", function () {
+    beforeEach(async function () {
+      await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
+      // Mint enough tokens for the penalty tests (need more than the default 10K)
+      await mockCUSD.mint(user1.address, ethers.parseEther("2000000"));
+    });
+
+    it("Should apply 0.001% penalty on early withdrawal", async function () {
+      const lockAmount = ethers.parseEther("1000000"); // 1M tokens
+      await mockCUSD.connect(user1).approve(await safeLock.getAddress(), lockAmount);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount);
+
+      const initialBalance = await mockCUSD.balanceOf(user1.address);
+      
+      // Withdraw immediately (early withdrawal)
+      await safeLock.connect(user1).withdrawSavings(0);
+      
+      const finalBalance = await mockCUSD.balanceOf(user1.address);
+      
+      // Calculate expected penalty: 0.001% = 1/100000
+      const expectedPenalty = lockAmount / 100000n;
+      const expectedWithdrawal = lockAmount - expectedPenalty;
+      
+      expect(finalBalance - initialBalance).to.equal(expectedWithdrawal);
+      
+      // Check penalty pool
+      const penaltyPool = await safeLock.getPenaltyPool();
+      expect(penaltyPool.totalPenalties).to.equal(expectedPenalty);
+    });
+
+    it("Should handle penalty calculation for various amounts", async function () {
+      const testCases = [
+        ethers.parseEther("100000"),   // 100K tokens
+        ethers.parseEther("500000"),   // 500K tokens
+        ethers.parseEther("1000000"),  // 1M tokens
+      ];
+
+      for (let i = 0; i < testCases.length; i++) {
+        const amount = testCases[i];
+        await mockCUSD.connect(user1).approve(await safeLock.getAddress(), amount);
+        await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, amount);
+
+        const balanceBefore = await mockCUSD.balanceOf(user1.address);
+        await safeLock.connect(user1).withdrawSavings(i);
+        const balanceAfter = await mockCUSD.balanceOf(user1.address);
+
+        const expectedPenalty = amount / 100000n;
+        const expectedWithdrawal = amount - expectedPenalty;
+        
+        expect(balanceAfter - balanceBefore).to.equal(expectedWithdrawal);
+      }
+    });
+
+    it("Should handle zero penalty for very small amounts", async function () {
+      const smallAmount = 50000n; // Less than 100000, will result in 0 penalty
+      await mockCUSD.connect(user1).approve(await safeLock.getAddress(), smallAmount);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, smallAmount);
+
+      const balanceBefore = await mockCUSD.balanceOf(user1.address);
+      await safeLock.connect(user1).withdrawSavings(0);
+      const balanceAfter = await mockCUSD.balanceOf(user1.address);
+
+      // Penalty rounds down to 0, so full amount is returned
+      expect(balanceAfter - balanceBefore).to.equal(smallAmount);
+    });
+
+    it("Should not apply penalty after lock duration expires", async function () {
+      const lockAmount = ethers.parseEther("1000000");
+      await mockCUSD.connect(user1).approve(await safeLock.getAddress(), lockAmount);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount);
+
+      // Fast forward past the lock duration
+      await ethers.provider.send("evm_increaseTime", [LOCK_DURATION + 1]);
+      await ethers.provider.send("evm_mine", []);
+
+      const balanceBefore = await mockCUSD.balanceOf(user1.address);
+      await safeLock.connect(user1).withdrawSavings(0);
+      const balanceAfter = await mockCUSD.balanceOf(user1.address);
+
+      // No penalty, full amount returned
+      expect(balanceAfter - balanceBefore).to.equal(lockAmount);
+    });
+
+    it("Should emit correct penalty amount in SavingsWithdrawn event", async function () {
+      const lockAmount = ethers.parseEther("1000000");
+      await mockCUSD.connect(user1).approve(await safeLock.getAddress(), lockAmount);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount);
+
+      const expectedPenalty = lockAmount / 100000n;
+      const expectedWithdrawal = lockAmount - expectedPenalty;
+
+      const tx = await safeLock.connect(user1).withdrawSavings(0);
+      
+      await expect(tx)
+        .to.emit(safeLock, "SavingsWithdrawn")
+        .withArgs(0, user1.address, expectedWithdrawal, expectedPenalty, true);
+    });
+  });
+
   describe("Account Deactivation", function () {
     beforeEach(async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);

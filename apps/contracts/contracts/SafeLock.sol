@@ -84,7 +84,8 @@ contract SafeLock {
     // Configuration
     uint256 public constant MIN_LOCK_DURATION = 1 days;
     uint256 public constant MAX_LOCK_DURATION = 365 days;
-    uint256 public constant EARLY_WITHDRAWAL_PENALTY = 3; // 3% penalty
+    uint256 public constant EARLY_WITHDRAWAL_PENALTY_BASIS_POINTS = 1; // 0.001% penalty (1/100000)
+    uint256 public constant PENALTY_DENOMINATOR = 100000; // Denominator for penalty calculation
     uint256 public constant MAX_LOCK_AMOUNT = 1000000 * 10 ** 18; // 1M cUSD max per lock
     uint256 public constant TIME_BUFFER = 300; // 5 minutes buffer for timestamp manipulation
     uint256 public constant MAX_USER_LOCKS = 20; // Maximum locks per user
@@ -378,8 +379,8 @@ contract SafeLock {
                 uint256 penaltyAmount = 0;
                 if (block.timestamp < (lock.unlockTime - TIME_BUFFER)) {
                     penaltyAmount =
-                        (lock.amount * EARLY_WITHDRAWAL_PENALTY) /
-                        100;
+                        (lock.amount * EARLY_WITHDRAWAL_PENALTY_BASIS_POINTS) /
+                        PENALTY_DENOMINATOR;
                 }
 
                 // Refund full amount (no penalty for emergency deactivation)
@@ -547,9 +548,12 @@ contract SafeLock {
 
         if (isEarlyWithdrawal) {
             // Safe penalty calculation with overflow protection and precision handling
-            penaltyAmount = (lock.amount * EARLY_WITHDRAWAL_PENALTY) / 100;
+            // Penalty is 0.001% (1/100000) of the locked amount
+            penaltyAmount =
+                (lock.amount * EARLY_WITHDRAWAL_PENALTY_BASIS_POINTS) /
+                PENALTY_DENOMINATOR;
             require(penaltyAmount < lock.amount, "Penalty calculation error");
-            require(penaltyAmount > 0, "Penalty must be greater than 0");
+            // For very small amounts, penalty might be 0 due to rounding, which is acceptable
             withdrawalAmount = lock.amount - penaltyAmount;
 
             // Add penalty to the pool

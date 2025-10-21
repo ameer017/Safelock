@@ -4,10 +4,10 @@ dotenv.config();
 
 export default buildModule("SafeLock", (m) => {
   const cUSD_ADDRESS = process.env.CUSD_MAINNET as string;
-  const USDT_ADDRESS = process.env.USDT_ADDRESS as string;
-  const CGHS_ADDRESS = process.env.CGHS_ADDRESS as string;
-  const CNGN_ADDRESS = process.env.CNGN_ADDRESS as string;
-  const CKES_ADDRESS = process.env.CKES_ADDRESS as string;
+  const USDT_ADDRESS = process.env.USDT_MAINNET_ADDRESS as string;
+  const CGHS_ADDRESS = process.env.CGHS_MAINNET_ADDRESS as string;
+  const CNGN_ADDRESS = process.env.CNGN_MAINNET_ADDRESS as string;
+  const CKES_ADDRESS = process.env.CKES_MAINNET_ADDRESS as string;
   const INITIAL_OWNER = process.env.INITIAL_OWNER as string;
 
   const SafeLock = m.contract("SafeLock", [

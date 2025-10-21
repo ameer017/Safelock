@@ -17,7 +17,7 @@ import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Skeleton } from "../../components/ui/skeleton";
 import { CreateLockModal } from "../../components/create-lock-modal";
 import { WithdrawModal } from "../../components/withdraw-modal";
-import { SAFELOCK_CONTRACT } from "../../lib/contracts";
+import { SAFELOCK_CONTRACT, CUSD_TOKEN, USDT_TOKEN, CGHS_TOKEN, CNGN_TOKEN, CKES_TOKEN } from "../../lib/contracts";
 import {
   TrendingUp,
   DollarSign,
@@ -30,6 +30,19 @@ import {
   Minus,
 } from "lucide-react";
 import Link from "next/link";
+
+const TOKEN_MAP: Record<string, { symbol: string; name: string }> = {
+  [CUSD_TOKEN.address.toLowerCase()]: { symbol: "cUSD", name: "Celo Dollar" },
+  [USDT_TOKEN.address.toLowerCase()]: { symbol: "USDT", name: "Tether USD" },
+  [CGHS_TOKEN.address.toLowerCase()]: { symbol: "cGHS", name: "Ghana Cedi" },
+  [CNGN_TOKEN.address.toLowerCase()]: { symbol: "cNGN", name: "Nigerian Naira" },
+  [CKES_TOKEN.address.toLowerCase()]: { symbol: "cKES", name: "Kenyan Shilling" },
+};
+
+const getTokenInfo = (tokenAddress: string) => {
+  const tokenInfo = TOKEN_MAP[tokenAddress.toLowerCase()];
+  return tokenInfo || { symbol: "Unknown", name: "Unknown Token" };
+};
 
 function SavingsPageContent() {
   const router = useRouter();
@@ -272,13 +285,17 @@ function SavingsPageContent() {
                         </div>
                         <div>
                           <div className="flex items-center space-x-2">
-                            <h4 className="font-semibold">Lock #{lock.id}</h4>
+                            <h4 className="font-semibold">{lock.title || `Lock #${lock.id}`}</h4>
                             <Badge variant={lock.isActive ? "default" : "secondary"}>
                               {lock.isActive ? "Active" : lock.isWithdrawn ? "Completed" : "Inactive"}
                             </Badge>
+                            <Badge variant="outline">
+                              {getTokenInfo(lock.token).symbol}
+                            </Badge>
                           </div>
                           <div className="text-sm text-muted-foreground space-y-1">
-                            <p>Amount: ${formatAmount(lock.amount)}</p>
+                            <p>Amount: {formatAmount(lock.amount)} {getTokenInfo(lock.token).symbol}</p>
+                            <p>Token: {getTokenInfo(lock.token).name}</p>
                             <p>Created: {formatDate(lock.lockTime)}</p>
                             <p>Unlocks: {formatDate(lock.unlockTime)}</p>
                           </div>

@@ -32,6 +32,7 @@ contract SafeLock {
         bool isWithdrawn;
         uint256 penaltyAmount;
         string title; // Custom title for the lock
+        address token; // Token address used for this lock
     }
 
     struct PenaltyPool {
@@ -79,6 +80,9 @@ contract SafeLock {
 
     // New: Username to address mapping (for unique usernames)
     mapping(string => address) public usernameToAddress;
+
+    // Whitelisted tokens mapping
+    mapping(address => bool) public isWhitelistedToken;
 
     PenaltyPool public penaltyPool;
 
@@ -234,6 +238,13 @@ contract SafeLock {
         CNGNToken = IERC20(_CNGNToken);
         CKESToken = IERC20(_CKESToken);
         _transferOwnership(initialOwner);
+
+        // Whitelist all supported tokens
+        isWhitelistedToken[_cUSDToken] = true;
+        isWhitelistedToken[_USDTToken] = true;
+        isWhitelistedToken[_CGHSToken] = true;
+        isWhitelistedToken[_CNGNToken] = true;
+        isWhitelistedToken[_CKESToken] = true;
 
         // Initialize pause state
         isPaused = false;
@@ -395,6 +406,9 @@ contract SafeLock {
                 lock.isWithdrawn = true;
                 lock.penaltyAmount = penaltyAmount; // Record what penalty would have been
 
+                // Transfer tokens immediately to avoid complex tracking
+                IERC20(lock.token).safeTransfer(msg.sender, refundAmount);
+
                 // Store active lock ID for efficient cleanup
                 activeLockIds[activeIndex] = lockId;
                 activeIndex++;
@@ -411,11 +425,6 @@ contract SafeLock {
         delete usernameToAddress[username];
         delete userLocks[msg.sender];
         delete userLockInfo[msg.sender];
-
-        // Transfer all refunded funds
-        if (totalRefunded > 0) {
-            cUSDToken.safeTransfer(msg.sender, totalRefunded);
-        }
 
         emit UserDeactivated(msg.sender, block.timestamp, totalRefunded);
         emit PenaltyPoolUpdated(
@@ -461,13 +470,15 @@ contract SafeLock {
     /**
      * @dev Create a new savings lock (now requires user registration)
      * @param lockDuration Duration to lock funds (in seconds)
-     * @param amount Amount of cUSD to lock
-     * @param title Custom title for the lock (1-100 characters)
+     * @param amount Amount of tokens to lock
+     * @param title Custom title for the lock (1-50 characters)
+     * @param tokenAddress Address of the token to lock
      */
     function createSavingsLock(
         uint256 lockDuration,
         uint256 amount,
-        string memory title
+        string memory title,
+        address tokenAddress
     ) external reentrancyGuard whenNotPaused withinUserLimits(msg.sender) {
         require(userProfiles[msg.sender].isActive, "User not registered");
         require(amount > 0, "Amount must be greater than 0");
@@ -478,13 +489,15 @@ contract SafeLock {
             "Invalid lock duration"
         );
         require(bytes(title).length > 0, "Title cannot be empty");
-        require(
-            bytes(title).length <= MAX_LOCK_TITLE_LENGTH,
-            "Title too long"
-        );
+        require(bytes(title).length <= MAX_LOCK_TITLE_LENGTH, "Title too long");
+        require(isWhitelistedToken[tokenAddress], "Token not whitelisted");
 
-        // Transfer cUSD from user to contract
-        cUSDToken.safeTransferFrom(msg.sender, address(this), amount);
+        // Transfer tokens from user to contract
+        IERC20(tokenAddress).safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
 
         uint256 lockId = _lockIds;
         uint256 unlockTime = block.timestamp + lockDuration + TIME_BUFFER; // Add time buffer
@@ -498,7 +511,8 @@ contract SafeLock {
             isActive: true,
             isWithdrawn: false,
             penaltyAmount: 0,
-            title: title
+            title: title,
+            token: tokenAddress
         });
 
         savingsLocks[lockId] = newLock;
@@ -591,8 +605,8 @@ contract SafeLock {
         // Update last activity
         userProfiles[msg.sender].lastActivity = block.timestamp;
 
-        // Transfer cUSD to user (external call last)
-        cUSDToken.safeTransfer(msg.sender, withdrawalAmount);
+        // Transfer tokens to user (external call last)
+        IERC20(lock.token).safeTransfer(msg.sender, withdrawalAmount);
 
         emit SavingsWithdrawn(
             lockId,

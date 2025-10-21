@@ -20,9 +20,23 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Alert, AlertDescription } from "./ui/alert";
 import { createSavingsLock } from "../lib/safelock-contract";
-import { CUSD_TOKEN, SAFELOCK_CONTRACT } from "../lib/contracts";
+import {
+  CUSD_TOKEN,
+  USDT_TOKEN,
+  CGHS_TOKEN,
+  CNGN_TOKEN,
+  CKES_TOKEN,
+  SAFELOCK_CONTRACT,
+} from "../lib/contracts";
 import { getOperationErrorMessage, OPERATIONS } from "../lib/error-utils";
 import { Plus, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 interface CreateLockModalProps {
   children: React.ReactNode;
@@ -39,9 +53,28 @@ const formatDateForInput = (date: Date): string => {
   return date.toISOString().split("T")[0];
 };
 
+const SUPPORTED_TOKENS = [
+  { ...CUSD_TOKEN, label: "cUSD - Celo Dollar" },
+  { ...USDT_TOKEN, label: "USDT - Tether USD" },
+  { ...CGHS_TOKEN, label: "cGHS - Ghana Cedi" },
+  { ...CNGN_TOKEN, label: "cNGN - Nigerian Naira" },
+  { ...CKES_TOKEN, label: "cKES - Kenyan Shilling" },
+];
+
+const getTokenInfo = (tokenAddress: string) => {
+  const token = SUPPORTED_TOKENS.find(
+    (t) => t.address.toLowerCase() === tokenAddress.toLowerCase()
+  );
+  return token
+    ? { symbol: token.symbol, name: token.name }
+    : { symbol: "Unknown", name: "Unknown Token" };
+};
+
 export function CreateLockModal({ children }: CreateLockModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [amount, setAmount] = useState("");
+  const [title, setTitle] = useState("");
+  const [selectedToken, setSelectedToken] = useState(CUSD_TOKEN.address);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [localError, setLocalError] = useState("");
@@ -83,8 +116,8 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
 
   const [currentAmount, setCurrentAmount] = useState<bigint>(0n);
   const { data: currentAllowance } = useReadContract({
-    address: CUSD_TOKEN.address,
-    abi: CUSD_TOKEN.abi,
+    address: selectedToken,
+    abi: CUSD_TOKEN.abi, // All tokens use the same ERC20 ABI
     functionName: "allowance",
     args:
       address && currentAmount > 0n
@@ -127,7 +160,12 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
       const amountInWei = BigInt(parseFloat(amount) * 1e18);
 
       try {
-        const contractData = createSavingsLock(durationInSeconds, amountInWei);
+        const contractData = createSavingsLock(
+          durationInSeconds,
+          amountInWei,
+          title,
+          selectedToken
+        );
         writeContract(contractData);
       } catch (error) {
         console.error("❌ Failed to create lock after approval:", error);
@@ -142,6 +180,8 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
     isApprovalSuccess,
     needsApproval,
     approvalCompleted,
+    title,
+    selectedToken,
     startDate,
     endDate,
     amount,
@@ -153,6 +193,8 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
       setIsOpen(false);
 
       setAmount("");
+      setTitle("");
+      setSelectedToken(CUSD_TOKEN.address);
       setStartDate(formatDateForInput(new Date()));
       setEndDate("");
       setTxHash(undefined);
@@ -174,6 +216,8 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
 
       if (!open) {
         setAmount("");
+        setTitle("");
+        setSelectedToken(CUSD_TOKEN.address);
         setStartDate(formatDateForInput(new Date()));
         setEndDate("");
         setLocalError("");
@@ -216,8 +260,18 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
     e.preventDefault();
     setLocalError("");
 
-    if (!amount || !startDate || !endDate) {
+    if (!amount || !title || !startDate || !endDate) {
       setLocalError("Please fill in all fields");
+      return;
+    }
+
+    if (title.length === 0) {
+      setLocalError("Title cannot be empty");
+      return;
+    }
+
+    if (title.length > 50) {
+      setLocalError("Title must be at most 50 characters");
       return;
     }
 
@@ -272,8 +326,8 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
         setApprovalCompleted(false);
 
         const approvalData = {
-          address: CUSD_TOKEN.address,
-          abi: CUSD_TOKEN.abi,
+          address: selectedToken,
+          abi: CUSD_TOKEN.abi, // All tokens use the same ERC20 ABI
           functionName: "approve" as const,
           args: [SAFELOCK_CONTRACT.address, amountInWei] as const,
         };
@@ -283,7 +337,12 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
       }
 
       setNeedsApproval(false);
-      const contractData = createSavingsLock(durationInSeconds, amountInWei);
+      const contractData = createSavingsLock(
+        durationInSeconds,
+        amountInWei,
+        title,
+        selectedToken
+      );
       writeContract(contractData);
     } catch (error) {
       console.error("❌ Failed to create lock:", error);
@@ -308,8 +367,9 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
         <DialogHeader>
           <DialogTitle>Create New Savings Lock</DialogTitle>
           <DialogDescription>
-            Lock your cUSD tokens for a specified duration to build discipline.
-            You&apos;ll need to approve the contract to spend your tokens first.
+            Lock your tokens for a specified duration to build discipline.
+            Choose from cUSD, USDT, cGHS, cNGN, or cKES. You&apos;ll need to
+            approve the contract to spend your tokens first.
           </DialogDescription>
         </DialogHeader>
 
@@ -330,14 +390,57 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
             <AlertDescription>
               {currentAllowance && (currentAllowance as bigint) >= currentAmount
                 ? "✅ Contract has sufficient allowance to create this lock"
-                : "⚠️ You'll need to approve the contract to spend your cUSD tokens first"}
+                : `⚠️ You'll need to approve the contract to spend your ${
+                    getTokenInfo(selectedToken).symbol
+                  } tokens first`}
             </AlertDescription>
           </Alert>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount (cUSD)</Label>
+            <Label htmlFor="title">Lock Title</Label>
+            <Input
+              id="title"
+              type="text"
+              maxLength={50}
+              placeholder="e.g., Emergency Fund, Vacation Savings"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              disabled={isProcessing}
+            />
+            <p className="text-xs text-muted-foreground">
+              Give your lock a meaningful name (1-50 characters)
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="token">Token</Label>
+            <Select
+              value={selectedToken}
+              onValueChange={(value) =>
+                setSelectedToken(value as `0x${string}`)
+              }
+              disabled={isProcessing}
+            >
+              <SelectTrigger id="token">
+                <SelectValue placeholder="Select token" />
+              </SelectTrigger>
+              <SelectContent>
+                {SUPPORTED_TOKENS.map((token) => (
+                  <SelectItem key={token.address} value={token.address}>
+                    {token.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Choose which token to lock
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="amount">Amount</Label>
             <Input
               id="amount"
               type="number"
@@ -349,7 +452,7 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
               disabled={isProcessing}
             />
             <p className="text-xs text-muted-foreground">
-              Minimum: 0.01 cUSD, Maximum: 1,000,000 cUSD
+              Minimum: 0.01, Maximum: 1,000,000 tokens
             </p>
           </div>
 

@@ -77,7 +77,7 @@ describe("SafeLock", function () {
 
     it("Should reject deployment with zero address for any token", async function () {
       const SafeLockFactory = await ethers.getContractFactory("SafeLock");
-      
+
       // Test zero address for cUSD token
       await expect(
         SafeLockFactory.deploy(
@@ -159,7 +159,7 @@ describe("SafeLock", function () {
   describe("User Registration", function () {
     it("Should allow user to register with username", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
-      
+
       const profile = await safeLock.getUserProfile(user1.address);
       expect(profile.username).to.equal(USERNAME1);
       expect(profile.isActive).to.be.true;
@@ -168,7 +168,7 @@ describe("SafeLock", function () {
 
     it("Should prevent duplicate usernames", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
-      
+
       await expect(
         safeLock.connect(user2).registerUser(USERNAME1, PROFILE_IMAGE_HASH)
       ).to.be.revertedWith("Username already taken");
@@ -176,7 +176,7 @@ describe("SafeLock", function () {
 
     it("Should prevent duplicate registrations", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
-      
+
       await expect(
         safeLock.connect(user1).registerUser("another_username", PROFILE_IMAGE_HASH)
       ).to.be.revertedWith("User already registered");
@@ -197,7 +197,7 @@ describe("SafeLock", function () {
 
     it("Should initialize user lock info correctly", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
-      
+
       const lockInfo = await safeLock.userLockInfo(user1.address);
       expect(lockInfo.totalActiveAmount).to.equal(0);
       expect(lockInfo.totalActiveLocks).to.equal(0);
@@ -221,9 +221,9 @@ describe("SafeLock", function () {
     it("Should allow user to update profile", async function () {
       const newUsername = "alice_updated";
       const newImageHash = "QmNewHash456...";
-      
+
       await safeLock.connect(user1).updateProfile(newUsername, newImageHash);
-      
+
       const profile = await safeLock.getUserProfile(user1.address);
       expect(profile.username).to.equal(newUsername);
       expect(profile.profileImageHash).to.equal(newImageHash);
@@ -231,7 +231,7 @@ describe("SafeLock", function () {
 
     it("Should prevent username conflicts during update", async function () {
       await safeLock.connect(user2).registerUser(USERNAME2, PROFILE_IMAGE_HASH);
-      
+
       await expect(
         safeLock.connect(user1).updateProfile(USERNAME2, PROFILE_IMAGE_HASH)
       ).to.be.revertedWith("Username already taken");
@@ -239,9 +239,9 @@ describe("SafeLock", function () {
 
     it("Should update username mapping correctly", async function () {
       const newUsername = "alice_updated";
-      
+
       await safeLock.connect(user1).updateProfile(newUsername, PROFILE_IMAGE_HASH);
-      
+
       // Check old username is freed
       expect(await safeLock.usernameToAddress(USERNAME1)).to.equal(ethers.ZeroAddress);
       // Check new username is mapped
@@ -250,7 +250,7 @@ describe("SafeLock", function () {
 
     it("Should emit UserProfileUpdated event", async function () {
       const newUsername = "alice_updated";
-      
+
       const tx = await safeLock.connect(user1).updateProfile(newUsername, PROFILE_IMAGE_HASH);
       await expect(tx)
         .to.emit(safeLock, "UserProfileUpdated")
@@ -280,18 +280,18 @@ describe("SafeLock", function () {
   describe("Creating Savings Locks (with registration requirement)", function () {
     it("Should reject unregistered users", async function () {
       await expect(
-        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE)
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE, await mockCUSD.getAddress())
       ).to.be.revertedWith("User not registered");
     });
 
     it("Should allow registered users to create locks", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
-      
+
       // Approve cUSD spending
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
-      
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE);
-      
+
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE, await mockCUSD.getAddress());
+
       const lockInfo = await safeLock.userLockInfo(user1.address);
       expect(lockInfo.totalActiveAmount).to.equal(DEPOSIT_AMOUNT);
       expect(lockInfo.totalActiveLocks).to.equal(1);
@@ -300,92 +300,143 @@ describe("SafeLock", function () {
     it("Should store and retrieve lock title correctly", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
-      
+
       const customTitle = "Vacation Savings 2025";
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, customTitle);
-      
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, customTitle, await mockCUSD.getAddress());
+
       const lockDetails = await safeLock.getLockDetails(0);
       expect(lockDetails.title).to.equal(customTitle);
     });
 
     it("Should reject empty title", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
-      
+
       await expect(
-        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, "")
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, "", await mockCUSD.getAddress())
       ).to.be.revertedWith("Title cannot be empty");
     });
 
     it("Should reject title that's too long", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
-      
+
       const longTitle = "a".repeat(51); // 51 characters (over 50 limit)
       await expect(
-        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, longTitle)
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, longTitle, await mockCUSD.getAddress())
       ).to.be.revertedWith("Title too long");
     });
 
     it("Should accept title at maximum length", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
-      
+
       const maxTitle = "a".repeat(50); // Exactly 50 characters
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, maxTitle);
-      
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, maxTitle, await mockCUSD.getAddress());
+
       const lockDetails = await safeLock.getLockDetails(0);
       expect(lockDetails.title).to.equal(maxTitle);
     });
 
     it("Should reject zero amount deposits", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
-      
+
       await expect(
-        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, 0, LOCK_TITLE)
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, 0, LOCK_TITLE, await mockCUSD.getAddress())
       ).to.be.revertedWith("Amount must be greater than 0");
     });
 
     it("Should reject lock duration below minimum", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
-      
+
       const minDuration = await safeLock.MIN_LOCK_DURATION();
       await expect(
-        safeLock.connect(user1).createSavingsLock(minDuration - 1n, DEPOSIT_AMOUNT, LOCK_TITLE)
+        safeLock.connect(user1).createSavingsLock(minDuration - 1n, DEPOSIT_AMOUNT, LOCK_TITLE, await mockCUSD.getAddress())
       ).to.be.revertedWith("Invalid lock duration");
     });
 
     it("Should reject lock duration above maximum", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
-      
+
       const maxDuration = await safeLock.MAX_LOCK_DURATION();
       await expect(
-        safeLock.connect(user1).createSavingsLock(maxDuration + 1n, DEPOSIT_AMOUNT, LOCK_TITLE)
+        safeLock.connect(user1).createSavingsLock(maxDuration + 1n, DEPOSIT_AMOUNT, LOCK_TITLE, await mockCUSD.getAddress())
       ).to.be.revertedWith("Invalid lock duration");
     });
 
     it("Should reject amount above maximum", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
-      
+
       const maxAmount = await safeLock.MAX_LOCK_AMOUNT();
       await expect(
-        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, maxAmount + 1n, LOCK_TITLE)
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, maxAmount + 1n, LOCK_TITLE, await mockCUSD.getAddress())
       ).to.be.revertedWith("Amount exceeds maximum limit");
     });
 
     it("Should enforce maximum locks per user", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), ethers.parseEther("100000"));
-      
+
       const maxLocks = await safeLock.MAX_USER_LOCKS();
-      
+
       // Create maximum allowed locks
       for (let i = 0; i < maxLocks; i++) {
-        await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, ethers.parseEther("100"), `Lock ${i + 1}`);
+        await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, ethers.parseEther("100"), `Lock ${i + 1}`, await mockCUSD.getAddress());
       }
-      
+
       // Try to create one more
       await expect(
-        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, ethers.parseEther("100"), "Extra Lock")
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, ethers.parseEther("100"), "Extra Lock", await mockCUSD.getAddress())
       ).to.be.revertedWith("Too many locks for user");
+    });
+
+    it("Should reject non-whitelisted tokens", async function () {
+      await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
+
+      const fakeTokenAddress = "0x1234567890123456789012345678901234567890";
+      await expect(
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE, fakeTokenAddress)
+      ).to.be.revertedWith("Token not whitelisted");
+    });
+
+    it("Should allow locks with different whitelisted tokens", async function () {
+      await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
+
+      // Create locks with different tokens
+      await mockCUSD.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
+      await mockUSDT.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
+      await mockCGHS.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
+
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, "cUSD Lock", await mockCUSD.getAddress());
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, "USDT Lock", await mockUSDT.getAddress());
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, "cGHS Lock", await mockCGHS.getAddress());
+
+      // Verify locks were created with correct tokens
+      const lock0 = await safeLock.getLockDetails(0);
+      const lock1 = await safeLock.getLockDetails(1);
+      const lock2 = await safeLock.getLockDetails(2);
+
+      expect(lock0.token).to.equal(await mockCUSD.getAddress());
+      expect(lock1.token).to.equal(await mockUSDT.getAddress());
+      expect(lock2.token).to.equal(await mockCGHS.getAddress());
+    });
+
+    it("Should withdraw correct token on withdrawal", async function () {
+      await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
+
+      // Create lock with USDT
+      await mockUSDT.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, "USDT Lock", await mockUSDT.getAddress());
+
+      const initialBalance = await mockUSDT.balanceOf(user1.address);
+
+      // Withdraw
+      await safeLock.connect(user1).withdrawSavings(0);
+
+      const finalBalance = await mockUSDT.balanceOf(user1.address);
+
+      // Should receive USDT back (minus penalty)
+      const expectedPenalty = DEPOSIT_AMOUNT / 100000n;
+      const expectedWithdrawal = DEPOSIT_AMOUNT - expectedPenalty;
+      expect(finalBalance - initialBalance).to.equal(expectedWithdrawal);
     });
   });
 
@@ -393,12 +444,12 @@ describe("SafeLock", function () {
     beforeEach(async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE, await mockCUSD.getAddress());
     });
 
     it("Should return user locks with details", async function () {
       const [lockIds, locks] = await safeLock.getUserLocksWithDetails(user1.address);
-      
+
       expect(lockIds.length).to.equal(1);
       expect(locks.length).to.equal(1);
       expect(locks[0].owner).to.equal(user1.address);
@@ -408,7 +459,7 @@ describe("SafeLock", function () {
 
     it("Should return individual lock details", async function () {
       const lockDetails = await safeLock.getLockDetails(0);
-      
+
       expect(lockDetails.owner).to.equal(user1.address);
       expect(lockDetails.amount).to.equal(DEPOSIT_AMOUNT);
       expect(lockDetails.isActive).to.be.true;
@@ -416,7 +467,7 @@ describe("SafeLock", function () {
 
     it("Should return correct user lock info", async function () {
       const lockInfo = await safeLock.userLockInfo(user1.address);
-      
+
       expect(lockInfo.totalActiveAmount).to.equal(DEPOSIT_AMOUNT);
       expect(lockInfo.totalActiveLocks).to.equal(1);
       // Note: lockIds array access is complex with public mappings
@@ -434,21 +485,21 @@ describe("SafeLock", function () {
     it("Should apply 0.001% penalty on early withdrawal", async function () {
       const lockAmount = ethers.parseEther("1000000"); // 1M tokens
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), lockAmount);
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount, "Big Savings");
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount, "Big Savings", await mockCUSD.getAddress());
 
       const initialBalance = await mockCUSD.balanceOf(user1.address);
-      
+
       // Withdraw immediately (early withdrawal)
       await safeLock.connect(user1).withdrawSavings(0);
-      
+
       const finalBalance = await mockCUSD.balanceOf(user1.address);
-      
+
       // Calculate expected penalty: 0.001% = 1/100000
       const expectedPenalty = lockAmount / 100000n;
       const expectedWithdrawal = lockAmount - expectedPenalty;
-      
+
       expect(finalBalance - initialBalance).to.equal(expectedWithdrawal);
-      
+
       // Check penalty pool
       const penaltyPool = await safeLock.getPenaltyPool();
       expect(penaltyPool.totalPenalties).to.equal(expectedPenalty);
@@ -464,7 +515,7 @@ describe("SafeLock", function () {
       for (let i = 0; i < testCases.length; i++) {
         const amount = testCases[i];
         await mockCUSD.connect(user1).approve(await safeLock.getAddress(), amount);
-        await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, amount, `Lock ${i + 1}`);
+        await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, amount, `Lock ${i + 1}`, await mockCUSD.getAddress());
 
         const balanceBefore = await mockCUSD.balanceOf(user1.address);
         await safeLock.connect(user1).withdrawSavings(i);
@@ -472,7 +523,7 @@ describe("SafeLock", function () {
 
         const expectedPenalty = amount / 100000n;
         const expectedWithdrawal = amount - expectedPenalty;
-        
+
         expect(balanceAfter - balanceBefore).to.equal(expectedWithdrawal);
       }
     });
@@ -480,7 +531,7 @@ describe("SafeLock", function () {
     it("Should handle zero penalty for very small amounts", async function () {
       const smallAmount = 50000n; // Less than 100000, will result in 0 penalty
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), smallAmount);
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, smallAmount, "Tiny Lock");
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, smallAmount, "Tiny Lock", await mockCUSD.getAddress());
 
       const balanceBefore = await mockCUSD.balanceOf(user1.address);
       await safeLock.connect(user1).withdrawSavings(0);
@@ -493,7 +544,7 @@ describe("SafeLock", function () {
     it("Should not apply penalty after lock duration expires", async function () {
       const lockAmount = ethers.parseEther("1000000");
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), lockAmount);
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount, "Time Locked");
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount, "Time Locked", await mockCUSD.getAddress());
 
       // Fast forward past the lock duration
       await ethers.provider.send("evm_increaseTime", [LOCK_DURATION + 1]);
@@ -510,13 +561,13 @@ describe("SafeLock", function () {
     it("Should emit correct penalty amount in SavingsWithdrawn event", async function () {
       const lockAmount = ethers.parseEther("1000000");
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), lockAmount);
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount, "Test Lock");
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, lockAmount, "Test Lock", await mockCUSD.getAddress());
 
       const expectedPenalty = lockAmount / 100000n;
       const expectedWithdrawal = lockAmount - expectedPenalty;
 
       const tx = await safeLock.connect(user1).withdrawSavings(0);
-      
+
       await expect(tx)
         .to.emit(safeLock, "SavingsWithdrawn")
         .withArgs(0, user1.address, expectedWithdrawal, expectedPenalty, true);
@@ -527,22 +578,22 @@ describe("SafeLock", function () {
     beforeEach(async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
       await mockCUSD.connect(user1).approve(await safeLock.getAddress(), DEPOSIT_AMOUNT);
-      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE);
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE, await mockCUSD.getAddress());
     });
 
     it("Should allow user to deactivate account", async function () {
       const initialBalance = await mockCUSD.balanceOf(user1.address);
-      
+
       await safeLock.connect(user1).deactivateAccount();
-      
+
       // Check user profile is deleted
       const profile = await safeLock.getUserProfile(user1.address);
       expect(profile.username).to.equal("");
       expect(profile.isActive).to.be.false;
-      
+
       // Check username mapping is cleared
       expect(await safeLock.usernameToAddress(USERNAME1)).to.equal(ethers.ZeroAddress);
-      
+
       // Check funds are returned
       const finalBalance = await mockCUSD.balanceOf(user1.address);
       expect(finalBalance).to.equal(initialBalance + DEPOSIT_AMOUNT);
@@ -550,7 +601,7 @@ describe("SafeLock", function () {
 
     it("Should prevent deactivation of already deactivated account", async function () {
       await safeLock.connect(user1).deactivateAccount();
-      
+
       await expect(
         safeLock.connect(user1).deactivateAccount()
       ).to.be.revertedWith("User not registered");
@@ -558,23 +609,23 @@ describe("SafeLock", function () {
 
     it("Should clear all user data on deactivation", async function () {
       await safeLock.connect(user1).deactivateAccount();
-      
+
       // Check user lock info is cleared
       const lockInfo = await safeLock.userLockInfo(user1.address);
       expect(lockInfo.totalActiveAmount).to.equal(0);
       expect(lockInfo.totalActiveLocks).to.equal(0);
       // Note: lockIds array access is complex with public mappings
       // We'll test the other fields which are more important
-      
+
       // Note: userLocks array is cleared on deactivation, but accessing it
       // after deactivation causes issues since the user no longer exists
     });
 
     it("Should update penalty pool correctly on deactivation", async function () {
       const initialPool = await safeLock.getPenaltyPool();
-      
+
       await safeLock.connect(user1).deactivateAccount();
-      
+
       const finalPool = await safeLock.getPenaltyPool();
       expect(finalPool.totalActiveSavings).to.equal(initialPool.totalActiveSavings - DEPOSIT_AMOUNT);
     });
@@ -607,11 +658,11 @@ describe("SafeLock", function () {
 
     it("Should prevent operations when paused", async function () {
       await safeLock.pause();
-      
+
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
-      
+
       await expect(
-        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE)
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE, await mockCUSD.getAddress())
       ).to.be.revertedWith("Contract is paused");
     });
 
@@ -675,10 +726,10 @@ describe("MockERC20", function () {
   it("Should allow approval and transfer", async function () {
     const amount = ethers.parseEther("1000");
     await mockCUSD.mint(user.address, amount);
-    
+
     await mockCUSD.connect(user).approve(owner.address, amount);
     await mockCUSD.connect(owner).transferFrom(user.address, owner.address, amount);
-    
+
     expect(await mockCUSD.balanceOf(owner.address)).to.equal(amount);
     expect(await mockCUSD.balanceOf(user.address)).to.equal(0);
   });

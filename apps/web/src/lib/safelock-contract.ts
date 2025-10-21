@@ -41,7 +41,9 @@ export const registerUser = (
 export const createSavingsLockWithDivvi = async (
   userAddress: Address,
   lockDuration: number,
-  amount: bigint
+  amount: bigint,
+  title: string,
+  tokenAddress: Address
 ) => {
   // Validate lock duration
   if (lockDuration < CONTRACT_CONSTANTS.MIN_LOCK_DURATION) {
@@ -59,11 +61,19 @@ export const createSavingsLockWithDivvi = async (
     throw new Error('Amount exceeds maximum limit')
   }
 
+  // Validate title
+  if (!title || title.length === 0) {
+    throw new Error('Title cannot be empty')
+  }
+  if (title.length > 50) {
+    throw new Error('Title must be at most 50 characters')
+  }
+
   return writeContractWithReferral(userAddress, {
     address: SAFELOCK_CONTRACT.address,
     abi: SAFELOCK_CONTRACT.abi,
     functionName: 'createSavingsLock',
-    args: [BigInt(lockDuration), amount],
+    args: [BigInt(lockDuration), amount, title, tokenAddress],
   })
 }
 
@@ -72,7 +82,9 @@ export const createSavingsLockWithDivvi = async (
  */
 export const createSavingsLock = (
   lockDuration: number,
-  amount: bigint
+  amount: bigint,
+  title: string,
+  tokenAddress: Address
 ) => {
   // Validate lock duration
   if (lockDuration < CONTRACT_CONSTANTS.MIN_LOCK_DURATION) {
@@ -90,11 +102,19 @@ export const createSavingsLock = (
     throw new Error('Amount exceeds maximum limit')
   }
 
+  // Validate title
+  if (!title || title.length === 0) {
+    throw new Error('Title cannot be empty')
+  }
+  if (title.length > 50) {
+    throw new Error('Title must be at most 50 characters')
+  }
+
   return {
     address: SAFELOCK_CONTRACT.address,
     abi: SAFELOCK_CONTRACT.abi,
     functionName: 'createSavingsLock' as const,
-    args: [BigInt(lockDuration), amount] as const,
+    args: [BigInt(lockDuration), amount, title, tokenAddress] as const,
   }
 }
 

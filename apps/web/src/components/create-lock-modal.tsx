@@ -145,7 +145,11 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
     if (writeData && typeof writeData === "string") {
       if (needsApproval && !approvalTxHash) {
         setApprovalTxHash(writeData as `0x${string}`);
-      } else if (!needsApproval || approvalCompleted) {
+        return;
+      }
+
+      if (!needsApproval || approvalCompleted) {
+        console.log("🔒 Setting lock creation transaction hash");
         setTxHash(writeData as `0x${string}`);
       }
     }
@@ -363,7 +367,7 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Savings Lock</DialogTitle>
           <DialogDescription>
@@ -397,9 +401,12 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="title">Lock Title</Label>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Title Row */}
+          <div className="space-y-3">
+            <Label htmlFor="title" className="text-base font-medium">
+              Lock Title
+            </Label>
             <Input
               id="title"
               type="text"
@@ -408,57 +415,69 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={isProcessing}
+              className="h-12 text-base"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Give your lock a meaningful name (1-50 characters)
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="token">Token</Label>
-            <Select
-              value={selectedToken}
-              onValueChange={(value) =>
-                setSelectedToken(value as `0x${string}`)
-              }
-              disabled={isProcessing}
-            >
-              <SelectTrigger id="token">
-                <SelectValue placeholder="Select token" />
-              </SelectTrigger>
-              <SelectContent>
-                {SUPPORTED_TOKENS.map((token) => (
-                  <SelectItem key={token.address} value={token.address}>
-                    {token.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">
-              Choose which token to lock
-            </p>
+          {/* Token and Amount Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <Label htmlFor="token" className="text-base font-medium">
+                Token
+              </Label>
+              <Select
+                value={selectedToken}
+                onValueChange={(value) =>
+                  setSelectedToken(value as `0x${string}`)
+                }
+                disabled={isProcessing}
+              >
+                <SelectTrigger id="token" className="h-12 text-base">
+                  <SelectValue placeholder="Select token" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_TOKENS.map((token) => (
+                    <SelectItem key={token.address} value={token.address}>
+                      {token.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                Choose which token to lock
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="amount" className="text-base font-medium">
+                Amount
+              </Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="Enter amount to lock"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                disabled={isProcessing}
+                className="h-12 text-base"
+              />
+              <p className="text-sm text-muted-foreground">
+                Minimum: 0.01, Maximum: 1,000,000 tokens
+              </p>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount</Label>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              placeholder="Enter amount to lock"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              disabled={isProcessing}
-            />
-            <p className="text-xs text-muted-foreground">
-              Minimum: 0.01, Maximum: 1,000,000 tokens
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date</Label>
+          {/* Date Range Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <Label htmlFor="startDate" className="text-base font-medium">
+                Start Date
+              </Label>
               <Input
                 id="startDate"
                 type="date"
@@ -466,10 +485,13 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
                 onChange={(e) => setStartDate(e.target.value)}
                 disabled={isProcessing}
                 min={formatDateForInput(new Date())}
+                className="h-12 text-base"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="endDate">End Date</Label>
+            <div className="space-y-3">
+              <Label htmlFor="endDate" className="text-base font-medium">
+                End Date
+              </Label>
               <Input
                 id="endDate"
                 type="date"
@@ -477,22 +499,23 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
                 onChange={(e) => setEndDate(e.target.value)}
                 disabled={isProcessing}
                 min={startDate || formatDateForInput(new Date())}
+                className="h-12 text-base"
               />
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Minimum: 1 day, Maximum: 1 year. Start date cannot be in the past.
           </p>
           {startDate && endDate && (
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-sm font-medium">
+            <div className="p-4 bg-muted rounded-lg border">
+              <p className="text-base font-semibold">
                 Lock Duration:{" "}
                 {Math.ceil(
                   calculateDuration(startDate, endDate) / (24 * 60 * 60)
                 )}{" "}
                 days
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground mt-1">
                 From {new Date(startDate).toLocaleDateString()} to{" "}
                 {new Date(endDate).toLocaleDateString()}
               </p>
@@ -565,16 +588,21 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
               </Alert>
             )}
 
-          <div className="flex justify-end space-x-2">
+          <div className="flex justify-end space-x-4 pt-4 border-t">
             <Button
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
               disabled={isProcessing}
+              className="h-12 px-8"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isProcessing || !isUserRegistered}>
+            <Button
+              type="submit"
+              disabled={isProcessing || !isUserRegistered}
+              className="h-12 px-8"
+            >
               {isProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

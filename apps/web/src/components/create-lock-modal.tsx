@@ -20,9 +20,23 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Alert, AlertDescription } from "./ui/alert";
 import { createSavingsLock } from "../lib/safelock-contract";
-import { CUSD_TOKEN, SAFELOCK_CONTRACT } from "../lib/contracts";
+import {
+  CUSD_TOKEN,
+  USDT_TOKEN,
+  CGHS_TOKEN,
+  CNGN_TOKEN,
+  CKES_TOKEN,
+  SAFELOCK_CONTRACT,
+} from "../lib/contracts";
 import { getOperationErrorMessage, OPERATIONS } from "../lib/error-utils";
 import { Plus, Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 interface CreateLockModalProps {
   children: React.ReactNode;
@@ -39,9 +53,28 @@ const formatDateForInput = (date: Date): string => {
   return date.toISOString().split("T")[0];
 };
 
+const SUPPORTED_TOKENS = [
+  { ...CUSD_TOKEN, label: "cUSD - Celo Dollar" },
+  { ...USDT_TOKEN, label: "USDT - Tether USD" },
+  { ...CGHS_TOKEN, label: "cGHS - Ghana Cedi" },
+  { ...CNGN_TOKEN, label: "cNGN - Nigerian Naira" },
+  { ...CKES_TOKEN, label: "cKES - Kenyan Shilling" },
+];
+
+const getTokenInfo = (tokenAddress: string) => {
+  const token = SUPPORTED_TOKENS.find(
+    (t) => t.address.toLowerCase() === tokenAddress.toLowerCase()
+  );
+  return token
+    ? { symbol: token.symbol, name: token.name }
+    : { symbol: "Unknown", name: "Unknown Token" };
+};
+
 export function CreateLockModal({ children }: CreateLockModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [amount, setAmount] = useState("");
+  const [title, setTitle] = useState("");
+  const [selectedToken, setSelectedToken] = useState(CUSD_TOKEN.address);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [localError, setLocalError] = useState("");
@@ -83,8 +116,8 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
 
   const [currentAmount, setCurrentAmount] = useState<bigint>(0n);
   const { data: currentAllowance } = useReadContract({
-    address: CUSD_TOKEN.address,
-    abi: CUSD_TOKEN.abi,
+    address: selectedToken,
+    abi: CUSD_TOKEN.abi, // All tokens use the same ERC20 ABI
     functionName: "allowance",
     args:
       address && currentAmount > 0n
@@ -112,7 +145,11 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
     if (writeData && typeof writeData === "string") {
       if (needsApproval && !approvalTxHash) {
         setApprovalTxHash(writeData as `0x${string}`);
-      } else if (!needsApproval || approvalCompleted) {
+        return;
+      }
+
+      if (!needsApproval || approvalCompleted) {
+        console.log("🔒 Setting lock creation transaction hash");
         setTxHash(writeData as `0x${string}`);
       }
     }
@@ -127,7 +164,12 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
       const amountInWei = BigInt(parseFloat(amount) * 1e18);
 
       try {
-        const contractData = createSavingsLock(durationInSeconds, amountInWei);
+        const contractData = createSavingsLock(
+          durationInSeconds,
+          amountInWei,
+          title,
+          selectedToken
+        );
         writeContract(contractData);
       } catch (error) {
         console.error("❌ Failed to create lock after approval:", error);
@@ -142,6 +184,8 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
     isApprovalSuccess,
     needsApproval,
     approvalCompleted,
+    title,
+    selectedToken,
     startDate,
     endDate,
     amount,
@@ -153,6 +197,8 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
       setIsOpen(false);
 
       setAmount("");
+      setTitle("");
+      setSelectedToken(CUSD_TOKEN.address);
       setStartDate(formatDateForInput(new Date()));
       setEndDate("");
       setTxHash(undefined);
@@ -174,6 +220,8 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
 
       if (!open) {
         setAmount("");
+        setTitle("");
+        setSelectedToken(CUSD_TOKEN.address);
         setStartDate(formatDateForInput(new Date()));
         setEndDate("");
         setLocalError("");
@@ -216,8 +264,18 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
     e.preventDefault();
     setLocalError("");
 
-    if (!amount || !startDate || !endDate) {
+    if (!amount || !title || !startDate || !endDate) {
       setLocalError("Please fill in all fields");
+      return;
+    }
+
+    if (title.length === 0) {
+      setLocalError("Title cannot be empty");
+      return;
+    }
+
+    if (title.length > 50) {
+      setLocalError("Title must be at most 50 characters");
       return;
     }
 
@@ -272,8 +330,8 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
         setApprovalCompleted(false);
 
         const approvalData = {
-          address: CUSD_TOKEN.address,
-          abi: CUSD_TOKEN.abi,
+          address: selectedToken,
+          abi: CUSD_TOKEN.abi, // All tokens use the same ERC20 ABI
           functionName: "approve" as const,
           args: [SAFELOCK_CONTRACT.address, amountInWei] as const,
         };
@@ -283,7 +341,12 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
       }
 
       setNeedsApproval(false);
-      const contractData = createSavingsLock(durationInSeconds, amountInWei);
+      const contractData = createSavingsLock(
+        durationInSeconds,
+        amountInWei,
+        title,
+        selectedToken
+      );
       writeContract(contractData);
     } catch (error) {
       console.error("❌ Failed to create lock:", error);
@@ -304,12 +367,13 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Savings Lock</DialogTitle>
           <DialogDescription>
-            Lock your cUSD tokens for a specified duration to build discipline.
-            You&apos;ll need to approve the contract to spend your tokens first.
+            Lock your tokens for a specified duration to build discipline.
+            Choose from cUSD, USDT, cGHS, cNGN, or cKES. You&apos;ll need to
+            approve the contract to spend your tokens first.
           </DialogDescription>
         </DialogHeader>
 
@@ -330,32 +394,90 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
             <AlertDescription>
               {currentAllowance && (currentAllowance as bigint) >= currentAmount
                 ? "✅ Contract has sufficient allowance to create this lock"
-                : "⚠️ You'll need to approve the contract to spend your cUSD tokens first"}
+                : `⚠️ You'll need to approve the contract to spend your ${
+                    getTokenInfo(selectedToken).symbol
+                  } tokens first`}
             </AlertDescription>
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount (cUSD)</Label>
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Title Row */}
+          <div className="space-y-3">
+            <Label htmlFor="title" className="text-base font-medium">
+              Lock Title
+            </Label>
             <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              placeholder="Enter amount to lock"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              id="title"
+              type="text"
+              maxLength={50}
+              placeholder="e.g., Emergency Fund, Vacation Savings"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               disabled={isProcessing}
+              className="h-12 text-base"
             />
-            <p className="text-xs text-muted-foreground">
-              Minimum: 0.01 cUSD, Maximum: 1,000,000 cUSD
+            <p className="text-sm text-muted-foreground">
+              Give your lock a meaningful name (1-50 characters)
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date</Label>
+          {/* Token and Amount Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <Label htmlFor="token" className="text-base font-medium">
+                Token
+              </Label>
+              <Select
+                value={selectedToken}
+                onValueChange={(value) =>
+                  setSelectedToken(value as `0x${string}`)
+                }
+                disabled={isProcessing}
+              >
+                <SelectTrigger id="token" className="h-12 text-base">
+                  <SelectValue placeholder="Select token" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_TOKENS.map((token) => (
+                    <SelectItem key={token.address} value={token.address}>
+                      {token.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                Choose which token to lock
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Label htmlFor="amount" className="text-base font-medium">
+                Amount
+              </Label>
+              <Input
+                id="amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                placeholder="Enter amount to lock"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                disabled={isProcessing}
+                className="h-12 text-base"
+              />
+              <p className="text-sm text-muted-foreground">
+                Minimum: 0.01, Maximum: 1,000,000 tokens
+              </p>
+            </div>
+          </div>
+
+          {/* Date Range Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <Label htmlFor="startDate" className="text-base font-medium">
+                Start Date
+              </Label>
               <Input
                 id="startDate"
                 type="date"
@@ -363,10 +485,13 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
                 onChange={(e) => setStartDate(e.target.value)}
                 disabled={isProcessing}
                 min={formatDateForInput(new Date())}
+                className="h-12 text-base"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="endDate">End Date</Label>
+            <div className="space-y-3">
+              <Label htmlFor="endDate" className="text-base font-medium">
+                End Date
+              </Label>
               <Input
                 id="endDate"
                 type="date"
@@ -374,22 +499,23 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
                 onChange={(e) => setEndDate(e.target.value)}
                 disabled={isProcessing}
                 min={startDate || formatDateForInput(new Date())}
+                className="h-12 text-base"
               />
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Minimum: 1 day, Maximum: 1 year. Start date cannot be in the past.
           </p>
           {startDate && endDate && (
-            <div className="p-3 bg-muted rounded-lg">
-              <p className="text-sm font-medium">
+            <div className="p-4 bg-muted rounded-lg border">
+              <p className="text-base font-semibold">
                 Lock Duration:{" "}
                 {Math.ceil(
                   calculateDuration(startDate, endDate) / (24 * 60 * 60)
                 )}{" "}
                 days
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground mt-1">
                 From {new Date(startDate).toLocaleDateString()} to{" "}
                 {new Date(endDate).toLocaleDateString()}
               </p>
@@ -462,16 +588,21 @@ export function CreateLockModal({ children }: CreateLockModalProps) {
               </Alert>
             )}
 
-          <div className="flex justify-end space-x-2">
+          <div className="flex justify-end space-x-4 pt-4 border-t">
             <Button
               type="button"
               variant="outline"
               onClick={() => handleOpenChange(false)}
               disabled={isProcessing}
+              className="h-12 px-8"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isProcessing || !isUserRegistered}>
+            <Button
+              type="submit"
+              disabled={isProcessing || !isUserRegistered}
+              className="h-12 px-8"
+            >
               {isProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

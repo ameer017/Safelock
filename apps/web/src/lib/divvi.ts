@@ -1,6 +1,6 @@
 import { getReferralTag, submitReferral } from '@divvi/referral-sdk'
 import { createWalletClient, custom, type Address, type Hash } from 'viem'
-import { celo, celoAlfajores } from 'wagmi/chains'
+import { celo, celoAlfajores, celoSepolia } from 'wagmi/chains'
 
 // Divvi consumer address for SafeLock
 export const DIVVI_CONSUMER_ADDRESS = '0xCf7D46393309a9e46B0a3AC3f6fB8A3cA3B5C029' as const
@@ -13,15 +13,15 @@ export const createDivviWalletClient = async () => {
 
   // Create a temporary client to get the current chain ID
   const tempClient = createWalletClient({
-    chain: celo, 
+    chain: celo,
     transport: custom(window.ethereum),
   })
 
   // Get the current chain ID from the provider
   const chainId = await tempClient.getChainId()
-  
+
   // Determine the correct chain based on the current chain ID
-  const chain = chainId === celo.id ? celo : celoAlfajores
+  const chain = chainId === celo.id ? celo : chainId === celoAlfajores.id ? celoAlfajores : celoSepolia
 
   return createWalletClient({
     chain,
@@ -63,12 +63,12 @@ export const sendTransactionWithReferral = async (
   }
 ) => {
   const walletClient = await createDivviWalletClient()
-  
+
   // Generate referral tag
   const referralTag = generateReferralTag(userAddress)
-  
+
   // Append referral tag to transaction data
-  const enhancedData: `0x${string}` = transactionData.data 
+  const enhancedData: `0x${string}` = transactionData.data
     ? (`${transactionData.data}${referralTag.slice(2)}` as `0x${string}`)
     : (referralTag as `0x${string}`)
 
@@ -103,10 +103,10 @@ export const writeContractWithReferral = async (
   }
 ) => {
   const walletClient = await createDivviWalletClient()
-  
+
   // Generate referral tag
   const referralTag = generateReferralTag(userAddress)
-  
+
   // Write contract with referral tag appended to data
   const txHash = await walletClient.writeContract({
     account: userAddress,
@@ -117,7 +117,7 @@ export const writeContractWithReferral = async (
     value: contractData.value,
     gas: contractData.gas,
     gasPrice: contractData.gasPrice,
-    dataSuffix: referralTag as `0x${string}`, 
+    dataSuffix: referralTag as `0x${string}`,
   })
 
   // Get chain ID and report to Divvi

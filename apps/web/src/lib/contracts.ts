@@ -1,13 +1,35 @@
+import { BaseToken } from "./token.base";
 // Contract configuration for SafeLock
 export const SAFELOCK_CONTRACT = {
-  address: "0xA04fA0b313d3CEcaE1F7E1DcA16eFCC68E2787a9" as `0x${string}`,
-  
+  address: "0x30503d6071c04EFd168E6E8e41022a4FBa1034c8" as `0x${string}`,
+  // address: "0xA04fA0b313d3CEcaE1F7E1DcA16eFCC68E2787a9" as `0x${string}`,
+
   "abi": [
     {
       "inputs": [
         {
           "internalType": "address",
           "name": "_cUSDToken",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_USDTToken",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_CGHSToken",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_CNGNToken",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_CKESToken",
           "type": "address"
         },
         {
@@ -163,6 +185,12 @@ export const SAFELOCK_CONTRACT = {
           "internalType": "uint256",
           "name": "unlockTime",
           "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "title",
+          "type": "string"
         }
       ],
       "name": "SavingsLocked",
@@ -301,7 +329,46 @@ export const SAFELOCK_CONTRACT = {
     },
     {
       "inputs": [],
-      "name": "EARLY_WITHDRAWAL_PENALTY",
+      "name": "CGHSToken",
+      "outputs": [
+        {
+          "internalType": "contract IERC20",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "CKESToken",
+      "outputs": [
+        {
+          "internalType": "contract IERC20",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "CNGNToken",
+      "outputs": [
+        {
+          "internalType": "contract IERC20",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "EARLY_WITHDRAWAL_PENALTY_BASIS_POINTS",
       "outputs": [
         {
           "internalType": "uint256",
@@ -340,6 +407,19 @@ export const SAFELOCK_CONTRACT = {
     },
     {
       "inputs": [],
+      "name": "MAX_LOCK_TITLE_LENGTH",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "MAX_USER_LOCKS",
       "outputs": [
         {
@@ -366,12 +446,38 @@ export const SAFELOCK_CONTRACT = {
     },
     {
       "inputs": [],
+      "name": "PENALTY_DENOMINATOR",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "TIME_BUFFER",
       "outputs": [
         {
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "USDTToken",
+      "outputs": [
+        {
+          "internalType": "contract IERC20",
+          "name": "",
+          "type": "address"
         }
       ],
       "stateMutability": "view",
@@ -414,6 +520,16 @@ export const SAFELOCK_CONTRACT = {
           "internalType": "uint256",
           "name": "amount",
           "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "internalType": "address",
+          "name": "tokenAddress",
+          "type": "address"
         }
       ],
       "name": "createSavingsLock",
@@ -492,6 +608,16 @@ export const SAFELOCK_CONTRACT = {
               "internalType": "uint256",
               "name": "penaltyAmount",
               "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "internalType": "address",
+              "name": "token",
+              "type": "address"
             }
           ],
           "internalType": "struct SafeLock.SavingsLock",
@@ -601,6 +727,16 @@ export const SAFELOCK_CONTRACT = {
               "internalType": "uint256",
               "name": "penaltyAmount",
               "type": "uint256"
+            },
+            {
+              "internalType": "string",
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "internalType": "address",
+              "name": "token",
+              "type": "address"
             }
           ],
           "internalType": "struct SafeLock.SavingsLock[]",
@@ -698,6 +834,25 @@ export const SAFELOCK_CONTRACT = {
         }
       ],
       "name": "isUsernameAvailable",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "isWhitelistedToken",
       "outputs": [
         {
           "internalType": "bool",
@@ -826,6 +981,16 @@ export const SAFELOCK_CONTRACT = {
           "internalType": "uint256",
           "name": "penaltyAmount",
           "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
         }
       ],
       "stateMutability": "view",
@@ -1011,60 +1176,48 @@ export const SAFELOCK_CONTRACT = {
   ] as const
 }
 
-// Celo cUSD token configuration for Alfajores testnet
 export const CUSD_TOKEN = {
+  ...BaseToken,
   address: "0x765de816845861e75a25fca122bb6898b8b1282a" as `0x${string}`,
-  
-  abi: [
-    {
-      "inputs": [
-        {"internalType": "address", "name": "owner", "type": "address"},
-        {"internalType": "address", "name": "spender", "type": "address"}
-      ],
-      "name": "allowance",
-      "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {"internalType": "address", "name": "spender", "type": "address"},
-        {"internalType": "uint256", "name": "amount", "type": "uint256"}
-      ],
-      "name": "approve",
-      "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
-      "name": "balanceOf",
-      "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "decimals",
-      "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "symbol",
-      "outputs": [{"internalType": "string", "name": "", "type": "string"}],
-      "stateMutability": "view",
-      "type": "function"
-    }
-  ] as const
-}
+  symbol: "cUSD",
+  name: "Celo Dollar",
+};
+
+export const USDT_TOKEN = {
+  ...BaseToken,
+  address: "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e" as `0x${string}`,
+  symbol: "USDT",
+  name: "Tether",
+};
+
+export const CGHS_TOKEN = {
+  ...BaseToken,
+  address: "0xfAeA5F3404bbA20D3cc2f8C4B0A888F55a3c7313" as `0x${string}`,
+  symbol: "CGHST",
+  name: "Celo Ghanaian Cedis",
+};
+
+export const CKES_TOKEN = {
+  ...BaseToken,
+  address: "0x456a3D042C0DbD3db53D5489e98dFb038553B0d0" as `0x${string}`,
+  symbol: "CKES",
+  name: "Celo Kenyan Shillings",
+};
+
+export const CNGN_TOKEN = {
+  ...BaseToken,
+  address: "0xE2702Bd97ee33c88c8f6f92DA3B733608aa76F71" as `0x${string}`,
+  symbol: "CNGN",
+  name: "Celo Nigerian Naira",
+};
+
+
 
 // Contract constants
 export const CONTRACT_CONSTANTS = {
   MIN_LOCK_DURATION: 1 * 24 * 60 * 60, // 1 day in seconds
   MAX_LOCK_DURATION: 365 * 24 * 60 * 60, // 365 days in seconds
-  EARLY_WITHDRAWAL_PENALTY: 3, // 3%
+  EARLY_WITHDRAWAL_PENALTY: 0.001, // 0.001%
   MAX_LOCK_AMOUNT: "1000000000000000000000000", // 1M cUSD in wei
   MAX_USER_LOCKS: 20
 }

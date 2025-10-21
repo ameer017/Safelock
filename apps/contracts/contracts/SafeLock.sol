@@ -31,6 +31,8 @@ contract SafeLock {
         bool isActive;
         bool isWithdrawn;
         uint256 penaltyAmount;
+        string title; // Custom title for the lock
+        address token; // Token address used for this lock
     }
 
     struct PenaltyPool {
@@ -59,6 +61,10 @@ contract SafeLock {
     bool private locked;
     // The cUSD token contract
     IERC20 public cUSDToken;
+    IERC20 public USDTToken;
+    IERC20 public CGHSToken;
+    IERC20 public CNGNToken;
+    IERC20 public CKESToken;
 
     // Mapping from lock ID to SavingsLock
     mapping(uint256 => SavingsLock) public savingsLocks;
@@ -71,19 +77,24 @@ contract SafeLock {
 
     // New: User profile mapping
     mapping(address => UserProfile) public userProfiles;
-    
+
     // New: Username to address mapping (for unique usernames)
     mapping(string => address) public usernameToAddress;
+
+    // Whitelisted tokens mapping
+    mapping(address => bool) public isWhitelistedToken;
 
     PenaltyPool public penaltyPool;
 
     // Configuration
     uint256 public constant MIN_LOCK_DURATION = 1 days;
     uint256 public constant MAX_LOCK_DURATION = 365 days;
-    uint256 public constant EARLY_WITHDRAWAL_PENALTY = 3; // 3% penalty
+    uint256 public constant EARLY_WITHDRAWAL_PENALTY_BASIS_POINTS = 1; // 0.001% penalty (1/100000)
+    uint256 public constant PENALTY_DENOMINATOR = 100000; // Denominator for penalty calculation
     uint256 public constant MAX_LOCK_AMOUNT = 1000000 * 10 ** 18; // 1M cUSD max per lock
     uint256 public constant TIME_BUFFER = 300; // 5 minutes buffer for timestamp manipulation
     uint256 public constant MAX_USER_LOCKS = 20; // Maximum locks per user
+    uint256 public constant MAX_LOCK_TITLE_LENGTH = 50; // Maximum characters for lock title
 
     // Events
     event SavingsLocked(
@@ -91,7 +102,8 @@ contract SafeLock {
         address indexed owner,
         uint256 amount,
         uint256 lockTime,
-        uint256 unlockTime
+        uint256 unlockTime,
+        string title
     );
 
     event SavingsWithdrawn(
@@ -139,7 +151,10 @@ contract SafeLock {
     event ContractUnpaused(address indexed unpauser, uint256 timestamp);
 
     // Ownership events
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event OwnershipTransferred(
+        address indexed previousOwner,
+        address indexed newOwner
+    );
 
     modifier reentrancyGuard() {
         require(!locked, "ReentrancyGuard: reentrant call");
@@ -168,8 +183,6 @@ contract SafeLock {
         _;
     }
 
-
-
     modifier withinUserLimits(address user) {
         require(
             userLocks[user].length < MAX_USER_LOCKS,
@@ -178,12 +191,14 @@ contract SafeLock {
         _;
     }
 
-
     // New: Username validation modifier
     modifier validUsername(string memory username) {
         require(bytes(username).length >= 3, "Username too short");
         require(bytes(username).length <= 32, "Username too long");
-        require(usernameToAddress[username] == address(0), "Username already taken");
+        require(
+            usernameToAddress[username] == address(0),
+            "Username already taken"
+        );
         _;
     }
 
@@ -193,19 +208,43 @@ contract SafeLock {
         _;
     }
 
-
-
     /**
      * @dev Constructor to initialize the contract
      * @param _cUSDToken Address of the cUSD token
+     * @param _USDTToken Address of the USDT token
+     * @param _CGHSToken Address of the CGHST token
+     * @param _CNGNToken Address of the CNGN token
+     * @param _CKESToken Address of the CKESToken token
      * @param initialOwner Address of the contract owner
      */
-    constructor(address _cUSDToken, address initialOwner) {
+    constructor(
+        address _cUSDToken,
+        address _USDTToken,
+        address _CGHSToken,
+        address _CNGNToken,
+        address _CKESToken,
+        address initialOwner
+    ) {
         require(initialOwner != address(0), "Invalid owner address");
         require(_cUSDToken != address(0), "Invalid token address");
+        require(_USDTToken != address(0), "Invalid token address");
+        require(_CGHSToken != address(0), "Invalid token address");
+        require(_CNGNToken != address(0), "Invalid token address");
+        require(_CKESToken != address(0), "Invalid token address");
 
         cUSDToken = IERC20(_cUSDToken);
+        USDTToken = IERC20(_USDTToken);
+        CGHSToken = IERC20(_CGHSToken);
+        CNGNToken = IERC20(_CNGNToken);
+        CKESToken = IERC20(_CKESToken);
         _transferOwnership(initialOwner);
+
+        // Whitelist all supported tokens
+        isWhitelistedToken[_cUSDToken] = true;
+        isWhitelistedToken[_USDTToken] = true;
+        isWhitelistedToken[_CGHSToken] = true;
+        isWhitelistedToken[_CNGNToken] = true;
+        isWhitelistedToken[_CKESToken] = true;
 
         // Initialize pause state
         isPaused = false;
@@ -231,7 +270,10 @@ contract SafeLock {
      * Can only be called by the current owner.
      */
     function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        require(
+            newOwner != address(0),
+            "Ownable: new owner is the zero address"
+        );
         _transferOwnership(newOwner);
     }
 
@@ -291,13 +333,18 @@ contract SafeLock {
     ) external {
         require(userProfiles[msg.sender].isActive, "User not registered");
         UserProfile storage profile = userProfiles[msg.sender];
-        
+
         // If username is changing, validate it's unique
-        if (keccak256(bytes(profile.username)) != keccak256(bytes(newUsername))) {
-            require(usernameToAddress[newUsername] == address(0), "Username already taken");
+        if (
+            keccak256(bytes(profile.username)) != keccak256(bytes(newUsername))
+        ) {
+            require(
+                usernameToAddress[newUsername] == address(0),
+                "Username already taken"
+            );
             require(bytes(newUsername).length >= 3, "Username too short");
             require(bytes(newUsername).length <= 32, "Username too long");
-            
+
             // Remove old username mapping
             delete usernameToAddress[profile.username];
             // Set new username mapping
@@ -336,27 +383,32 @@ contract SafeLock {
         uint256[] memory userLockIds = userLocks[msg.sender];
         uint256[] memory activeLockIds = new uint256[](userActiveLocks);
         uint256 activeIndex = 0;
-        
+
         for (uint256 i = 0; i < userLockIds.length; i++) {
             uint256 lockId = userLockIds[i];
             SavingsLock storage lock = savingsLocks[lockId];
-            
+
             if (lock.isActive && !lock.isWithdrawn) {
                 // Calculate penalty that would have been applied
                 uint256 penaltyAmount = 0;
                 if (block.timestamp < (lock.unlockTime - TIME_BUFFER)) {
-                    penaltyAmount = (lock.amount * EARLY_WITHDRAWAL_PENALTY) / 100;
+                    penaltyAmount =
+                        (lock.amount * EARLY_WITHDRAWAL_PENALTY_BASIS_POINTS) /
+                        PENALTY_DENOMINATOR;
                 }
-                
+
                 // Refund full amount (no penalty for emergency deactivation)
                 uint256 refundAmount = lock.amount;
                 totalRefunded += refundAmount;
-                
+
                 // Update lock status
                 lock.isActive = false;
                 lock.isWithdrawn = true;
                 lock.penaltyAmount = penaltyAmount; // Record what penalty would have been
-                
+
+                // Transfer tokens immediately to avoid complex tracking
+                IERC20(lock.token).safeTransfer(msg.sender, refundAmount);
+
                 // Store active lock ID for efficient cleanup
                 activeLockIds[activeIndex] = lockId;
                 activeIndex++;
@@ -374,13 +426,11 @@ contract SafeLock {
         delete userLocks[msg.sender];
         delete userLockInfo[msg.sender];
 
-        // Transfer all refunded funds
-        if (totalRefunded > 0) {
-            cUSDToken.safeTransfer(msg.sender, totalRefunded);
-        }
-
         emit UserDeactivated(msg.sender, block.timestamp, totalRefunded);
-        emit PenaltyPoolUpdated(penaltyPool.totalPenalties, penaltyPool.totalActiveSavings);
+        emit PenaltyPoolUpdated(
+            penaltyPool.totalPenalties,
+            penaltyPool.totalActiveSavings
+        );
     }
 
     /**
@@ -388,14 +438,12 @@ contract SafeLock {
      * @param user Address of the user
      * @return User profile details
      */
-    function getUserProfile(address user) external view returns (UserProfile memory) {
+    function getUserProfile(
+        address user
+    ) external view returns (UserProfile memory) {
         require(user != address(0), "Invalid user address");
         return userProfiles[user];
     }
-
-
-
-
 
     /**
      * @dev Check if a user is registered (gas-efficient check)
@@ -411,27 +459,27 @@ contract SafeLock {
      * @param username Username to check
      * @return True if username is available, false if already taken
      */
-    function isUsernameAvailable(string memory username) external view returns (bool) {
+    function isUsernameAvailable(
+        string memory username
+    ) external view returns (bool) {
         require(bytes(username).length >= 3, "Username too short");
         require(bytes(username).length <= 32, "Username too long");
         return usernameToAddress[username] == address(0);
     }
 
-
     /**
      * @dev Create a new savings lock (now requires user registration)
      * @param lockDuration Duration to lock funds (in seconds)
-     * @param amount Amount of cUSD to lock
+     * @param amount Amount of tokens to lock
+     * @param title Custom title for the lock (1-50 characters)
+     * @param tokenAddress Address of the token to lock
      */
     function createSavingsLock(
         uint256 lockDuration,
-        uint256 amount
-    )
-        external
-        reentrancyGuard
-        whenNotPaused
-        withinUserLimits(msg.sender)
-    {
+        uint256 amount,
+        string memory title,
+        address tokenAddress
+    ) external reentrancyGuard whenNotPaused withinUserLimits(msg.sender) {
         require(userProfiles[msg.sender].isActive, "User not registered");
         require(amount > 0, "Amount must be greater than 0");
         require(amount <= MAX_LOCK_AMOUNT, "Amount exceeds maximum limit");
@@ -440,9 +488,16 @@ contract SafeLock {
                 lockDuration <= MAX_LOCK_DURATION,
             "Invalid lock duration"
         );
+        require(bytes(title).length > 0, "Title cannot be empty");
+        require(bytes(title).length <= MAX_LOCK_TITLE_LENGTH, "Title too long");
+        require(isWhitelistedToken[tokenAddress], "Token not whitelisted");
 
-        // Transfer cUSD from user to contract
-        cUSDToken.safeTransferFrom(msg.sender, address(this), amount);
+        // Transfer tokens from user to contract
+        IERC20(tokenAddress).safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
 
         uint256 lockId = _lockIds;
         uint256 unlockTime = block.timestamp + lockDuration + TIME_BUFFER; // Add time buffer
@@ -455,7 +510,9 @@ contract SafeLock {
             unlockTime: unlockTime,
             isActive: true,
             isWithdrawn: false,
-            penaltyAmount: 0
+            penaltyAmount: 0,
+            title: title,
+            token: tokenAddress
         });
 
         savingsLocks[lockId] = newLock;
@@ -481,7 +538,8 @@ contract SafeLock {
             msg.sender,
             amount,
             block.timestamp,
-            unlockTime
+            unlockTime,
+            title
         );
 
         emit PenaltyPoolUpdated(
@@ -516,9 +574,12 @@ contract SafeLock {
 
         if (isEarlyWithdrawal) {
             // Safe penalty calculation with overflow protection and precision handling
-            penaltyAmount = (lock.amount * EARLY_WITHDRAWAL_PENALTY) / 100;
+            // Penalty is 0.001% (1/100000) of the locked amount
+            penaltyAmount =
+                (lock.amount * EARLY_WITHDRAWAL_PENALTY_BASIS_POINTS) /
+                PENALTY_DENOMINATOR;
             require(penaltyAmount < lock.amount, "Penalty calculation error");
-            require(penaltyAmount > 0, "Penalty must be greater than 0");
+            // For very small amounts, penalty might be 0 due to rounding, which is acceptable
             withdrawalAmount = lock.amount - penaltyAmount;
 
             // Add penalty to the pool
@@ -544,8 +605,8 @@ contract SafeLock {
         // Update last activity
         userProfiles[msg.sender].lastActivity = block.timestamp;
 
-        // Transfer cUSD to user (external call last)
-        cUSDToken.safeTransfer(msg.sender, withdrawalAmount);
+        // Transfer tokens to user (external call last)
+        IERC20(lock.token).safeTransfer(msg.sender, withdrawalAmount);
 
         emit SavingsWithdrawn(
             lockId,
@@ -584,9 +645,7 @@ contract SafeLock {
      * @dev Update cUSD token address (owner only, emergency use)
      * @param newToken New cUSD token address
      */
-    function updateToken(
-        address newToken
-    ) external onlyOwner {
+    function updateToken(address newToken) external onlyOwner {
         require(newToken != address(cUSDToken), "Same token address");
         require(
             penaltyPool.totalActiveSavings == 0,
@@ -619,7 +678,6 @@ contract SafeLock {
         emit ContractUnpaused(msg.sender, block.timestamp);
     }
 
-
     /**
      * @dev Get pause status information
      * @return generalPaused General pause status
@@ -628,18 +686,10 @@ contract SafeLock {
     function getPauseStatus()
         external
         view
-        returns (
-            bool generalPaused,
-            uint256 generalPauseTime
-        )
+        returns (bool generalPaused, uint256 generalPauseTime)
     {
-        return (
-            isPaused,
-            pauseTimestamp
-        );
+        return (isPaused, pauseTimestamp);
     }
-
-
 
     /**
      * @dev Get all locks for a user with full details in one call
@@ -649,12 +699,16 @@ contract SafeLock {
      */
     function getUserLocksWithDetails(
         address user
-    ) external view returns (uint256[] memory lockIds, SavingsLock[] memory locks) {
+    )
+        external
+        view
+        returns (uint256[] memory lockIds, SavingsLock[] memory locks)
+    {
         require(user != address(0), "Invalid user address");
-        
+
         lockIds = userLocks[user];
         locks = new SavingsLock[](lockIds.length);
-        
+
         for (uint256 i = 0; i < lockIds.length; i++) {
             locks[i] = savingsLocks[lockIds[i]];
         }
@@ -701,6 +755,4 @@ contract SafeLock {
     function _getActiveSavingsCount() internal view returns (uint256) {
         return _activeSavingsCount;
     }
-
-  
 }

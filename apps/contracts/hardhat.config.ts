@@ -16,14 +16,25 @@ const config: HardhatUserConfig = {
     // Celo Mainnet
     celo: {
       url: "https://forno.celo.org",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY.startsWith('0x') ? process.env.PRIVATE_KEY : `0x${process.env.PRIVATE_KEY}`] : [],
+      accounts: process.env.PRIVATE_KEY ?
+        [process.env.PRIVATE_KEY.startsWith('0x') ?
+          process.env.PRIVATE_KEY : `0x${process.env.PRIVATE_KEY}`] : [],
       chainId: 42220,
     },
     // Celo Alfajores Testnet
     alfajores: {
       url: "https://alfajores-forno.celo-testnet.org",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY.startsWith('0x') ? process.env.PRIVATE_KEY : `0x${process.env.PRIVATE_KEY}`] : [],
+      accounts: process.env.PRIVATE_KEY ?
+        [process.env.PRIVATE_KEY.startsWith('0x') ?
+          process.env.PRIVATE_KEY : `0x${process.env.PRIVATE_KEY}`] : [],
       chainId: 44787,
+    },
+    sepolia: {
+      url: "https://forno.celo-sepolia.celo-testnet.org",
+      accounts: process.env.PRIVATE_KEY ?
+        [process.env.PRIVATE_KEY.startsWith('0x') ?
+          process.env.PRIVATE_KEY : `0x${process.env.PRIVATE_KEY}`] : [],
+      chainId: 11142220,
     },
     // Local development
     localhost: {
@@ -48,6 +59,14 @@ const config: HardhatUserConfig = {
         urls: {
           apiURL: "https://api.etherscan.io/v2/api?chainid=44787",
           browserURL: "https://alfajores.celoscan.io",
+        },
+      },
+      {
+        network: "sepolia",
+        chainId: 11142220,
+        urls: {
+          apiURL: "https://api.etherscan.io/v2/api?chainid=11142220",
+          browserURL: "https://celo-sepolia.blockscout.com",
         },
       },
     ],

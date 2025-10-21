@@ -9,6 +9,7 @@
     "test": "hardhat test",
     "deploy": "hardhat ignition deploy ignition/modules/SafeLock.ts",
     "deploy:alfajores": "hardhat ignition deploy ignition/modules/SafeLock.ts --network alfajores",
+    "deploy:sepolia": "hardhat ignition deploy ignition/modules/SafeLock.testnet.ts --network sepolia",
     "deploy:celo": "hardhat ignition deploy ignition/modules/SafeLock.ts --network celo",
     "verify": "hardhat verify",
     "clean": "hardhat clean",

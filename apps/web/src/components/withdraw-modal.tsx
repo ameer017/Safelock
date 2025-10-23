@@ -12,9 +12,18 @@ import {
   DialogTitle,
 } from "./ui/dialog";
 import { Alert, AlertDescription } from "./ui/alert";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 import { withdrawSavings } from "../lib/safelock-contract";
 import { getOperationErrorMessage, OPERATIONS } from "../lib/error-utils";
-import { CheckCircle, AlertCircle, Loader2, Clock } from "lucide-react";
+import {
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Clock,
+  AlertTriangle,
+  DollarSign,
+} from "lucide-react";
 
 interface WithdrawModalProps {
   children: React.ReactNode;
@@ -23,6 +32,14 @@ interface WithdrawModalProps {
   unlockTime: bigint;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+}
+
+interface PenaltyCalculation {
+  isEarlyWithdrawal: boolean;
+  penaltyAmount: bigint;
+  withdrawalAmount: bigint;
+  timeRemaining: number;
+  penaltyPercentage: number;
 }
 
 export function WithdrawModal({
@@ -35,6 +52,7 @@ export function WithdrawModal({
 }: WithdrawModalProps) {
   const [localError, setLocalError] = useState<string>("");
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
+  const [withdrawalReason, setWithdrawalReason] = useState<string>("");
 
   const {
     writeContract,
@@ -59,6 +77,52 @@ export function WithdrawModal({
 
   const formatUnlockTime = (timestamp: bigint) => {
     return new Date(Number(timestamp) * 1000).toLocaleDateString();
+  };
+
+  // Dynamic penalty calculation based on time remaining
+  const calculatePenalty = (): PenaltyCalculation => {
+    const now = Math.floor(Date.now() / 1000);
+    const unlockTimestamp = Number(unlockTime);
+    const timeRemaining = unlockTimestamp - now;
+    const isEarlyWithdrawal = timeRemaining > 0;
+
+    if (!isEarlyWithdrawal) {
+      return {
+        isEarlyWithdrawal: false,
+        penaltyAmount: 0n,
+        withdrawalAmount: amount,
+        timeRemaining: 0,
+        penaltyPercentage: 0,
+      };
+    }
+
+    const penaltyRate = 0.001;
+
+    const penaltyAmount = BigInt(Math.floor(Number(amount) * penaltyRate));
+    const withdrawalAmount = amount - penaltyAmount;
+
+    return {
+      isEarlyWithdrawal: true,
+      penaltyAmount,
+      withdrawalAmount,
+      timeRemaining,
+      penaltyPercentage: penaltyRate * 100,
+    };
+  };
+
+  const formatTimeRemaining = (seconds: number): string => {
+    if (seconds <= 0) return "0 seconds";
+
+    const days = Math.floor(seconds / (24 * 60 * 60));
+    const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
+    const minutes = Math.floor((seconds % (60 * 60)) / 60);
+
+    const parts = [];
+    if (days > 0) parts.push(`${days} day${days > 1 ? "s" : ""}`);
+    if (hours > 0) parts.push(`${hours} hour${hours > 1 ? "s" : ""}`);
+    if (minutes > 0) parts.push(`${minutes} minute${minutes > 1 ? "s" : ""}`);
+
+    return parts.join(", ");
   };
 
   useEffect(() => {
@@ -93,8 +157,11 @@ export function WithdrawModal({
   }, [isTxSuccess, txHash, handleOpenChange]);
 
   const handleWithdraw = () => {
-    if (!isLockReady()) {
-      setLocalError("Lock is not ready for withdrawal yet");
+    const penaltyInfo = calculatePenalty();
+
+    // For early withdrawals, require a reason
+    if (penaltyInfo.isEarlyWithdrawal && !withdrawalReason.trim()) {
+      setLocalError("Please provide a reason for early withdrawal");
       return;
     }
 
@@ -104,16 +171,23 @@ export function WithdrawModal({
   };
 
   const isProcessing = isPending || isConfirmingTx;
+  const penaltyInfo = calculatePenalty();
 
   return (
     <>
       {children}
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Withdraw Savings</DialogTitle>
+            <DialogTitle>
+              {penaltyInfo.isEarlyWithdrawal
+                ? "Early Withdrawal"
+                : "Withdraw Savings"}
+            </DialogTitle>
             <DialogDescription>
-              Confirm withdrawal of your savings from Lock #{lockId}
+              {penaltyInfo.isEarlyWithdrawal
+                ? `Withdraw your savings from Lock #${lockId} before the lock period ends`
+                : `Confirm withdrawal of your savings from Lock #${lockId}`}
             </DialogDescription>
           </DialogHeader>
 
@@ -125,7 +199,9 @@ export function WithdrawModal({
                 <span className="font-medium">#{lockId}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Amount:</span>
+                <span className="text-sm text-muted-foreground">
+                  Original Amount:
+                </span>
                 <span className="font-medium">${formatAmount(amount)}</span>
               </div>
               <div className="flex justify-between">
@@ -146,9 +222,79 @@ export function WithdrawModal({
                   {isLockReady() ? "Ready to Withdraw" : "Still Locked"}
                 </span>
               </div>
+              {penaltyInfo.isEarlyWithdrawal && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Time Remaining:
+                  </span>
+                  <span className="font-medium text-orange-600">
+                    {formatTimeRemaining(penaltyInfo.timeRemaining)}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {!isLockReady() && (
+            {/* Penalty Information */}
+            {penaltyInfo.isEarlyWithdrawal && (
+              <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg space-y-3">
+                <div className="flex items-center space-x-2">
+                  <AlertTriangle className="h-5 w-5 text-orange-600" />
+                  <h4 className="font-semibold text-orange-800">
+                    Early Withdrawal Penalty
+                  </h4>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-orange-700">
+                      Penalty Rate:
+                    </span>
+                    <span className="font-medium text-orange-800">
+                      {penaltyInfo.penaltyPercentage.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-orange-700">
+                      Penalty Amount:
+                    </span>
+                    <span className="font-medium text-orange-800">
+                      -${formatAmount(penaltyInfo.penaltyAmount)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t border-orange-200 pt-2">
+                    <span className="text-sm font-semibold text-orange-800">
+                      You&apos;ll Receive:
+                    </span>
+                    <span className="font-bold text-orange-900">
+                      ${formatAmount(penaltyInfo.withdrawalAmount)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Withdrawal Reason for Early Withdrawals */}
+            {penaltyInfo.isEarlyWithdrawal && (
+              <div className="space-y-2">
+                <Label
+                  htmlFor="withdrawal-reason"
+                  className="text-sm font-medium"
+                >
+                  Reason for Early Withdrawal *
+                </Label>
+                <Input
+                  id="withdrawal-reason"
+                  placeholder="Please explain why you need to withdraw early..."
+                  value={withdrawalReason}
+                  onChange={(e) => setWithdrawalReason(e.target.value)}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This information will be recorded in your transaction history.
+                </p>
+              </div>
+            )}
+
+            {!isLockReady() && !penaltyInfo.isEarlyWithdrawal && (
               <Alert>
                 <Clock className="h-4 w-4" />
                 <AlertDescription>
@@ -158,11 +304,24 @@ export function WithdrawModal({
               </Alert>
             )}
 
+            {penaltyInfo.isEarlyWithdrawal && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  You are withdrawing early. A penalty of{" "}
+                  {penaltyInfo.penaltyPercentage.toFixed(1)}% (
+                  {formatAmount(penaltyInfo.penaltyAmount)}) will be deducted
+                  from your withdrawal.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {(localError || error) && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="break-words">
-                  {localError || getOperationErrorMessage(OPERATIONS.WITHDRAW, error)}
+                  {localError ||
+                    getOperationErrorMessage(OPERATIONS.WITHDRAW, error)}
                 </AlertDescription>
               </Alert>
             )}
@@ -205,14 +364,22 @@ export function WithdrawModal({
             </Button>
             <Button
               onClick={handleWithdraw}
-              disabled={!isLockReady() || isProcessing}
+              disabled={isProcessing}
               className="w-full sm:w-auto"
+              variant={
+                penaltyInfo.isEarlyWithdrawal ? "destructive" : "default"
+              }
             >
               {isProcessing ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   {isPending && "Confirming..."}
                   {isConfirmingTx && "Processing..."}
+                </>
+              ) : penaltyInfo.isEarlyWithdrawal ? (
+                <>
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Early Withdraw ${formatAmount(penaltyInfo.withdrawalAmount)}
                 </>
               ) : (
                 `Withdraw $${formatAmount(amount)}`

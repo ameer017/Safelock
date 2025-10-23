@@ -12,7 +12,6 @@ import { ThemeToggle } from "./theme-toggle";
 
 const navLinks = [
   { name: "Dashboard", href: "/dashboard" },
-  { name: "Savings", href: "/savings" },
   { name: "Profile", href: "/profile" },
 ];
 

@@ -22,6 +22,7 @@ import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Skeleton } from "../../components/ui/skeleton";
 import { CreateLockModal } from "../../components/create-lock-modal";
+import { TransactionHistory } from "../../components/transaction-history";
 import { SAFELOCK_CONTRACT } from "../../lib/contracts";
 import {
   TrendingUp,
@@ -33,7 +34,9 @@ import {
   History,
   AlertCircle,
   Loader2,
+  Settings,
 } from "lucide-react";
+import Link from "next/link";
 
 function DashboardContent() {
   const router = useRouter();
@@ -144,12 +147,20 @@ function DashboardContent() {
             </p>
           </div>
 
-          <CreateLockModal>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create New Lock
-            </Button>
-          </CreateLockModal>
+          <div className="flex items-center space-x-3">
+            <Link href="/savings">
+              <Button variant="outline">
+                <Settings className="h-4 w-4 mr-2" />
+                Manage Savings
+              </Button>
+            </Link>
+            <CreateLockModal>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create New Lock
+              </Button>
+            </CreateLockModal>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -266,10 +277,11 @@ function DashboardContent() {
           </CardHeader>
           <CardContent>
             <Tabs defaultValue="all" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="all">All Locks</TabsTrigger>
                 <TabsTrigger value="active">Active</TabsTrigger>
                 <TabsTrigger value="completed">Completed</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
               </TabsList>
               <TabsContent value="all" className="mt-6">
                 {isLoadingLocks ? (
@@ -408,6 +420,7 @@ function DashboardContent() {
                       ).toLocaleDateString();
                       const timeRemaining =
                         Number(lock.unlockTime) - Math.floor(Date.now() / 1000);
+                      const isReadyToWithdraw = timeRemaining <= 0;
 
                       return (
                         <div
@@ -435,17 +448,18 @@ function DashboardContent() {
                                 { maximumFractionDigits: 2 }
                               )}
                             </p>
-                            <Badge variant="default" className="text-xs">
-                              {timeRemaining > 0
-                                ? "Active"
-                                : "Ready to Withdraw"}
+                            <Badge 
+                              variant={isReadyToWithdraw ? "default" : "secondary"} 
+                              className="text-xs"
+                            >
+                              {isReadyToWithdraw ? "Ready to Withdraw" : "Active"}
                             </Badge>
                             <p className="text-xs text-muted-foreground mt-1">
-                              {timeRemaining > 0
-                                ? `Unlocks in ${Math.ceil(
+                              {isReadyToWithdraw
+                                ? "Ready for withdrawal"
+                                : `Unlocks in ${Math.ceil(
                                     timeRemaining / (24 * 60 * 60)
-                                  )} days`
-                                : "Ready for withdrawal"}
+                                  )} days`}
                             </p>
                           </div>
                         </div>
@@ -524,10 +538,14 @@ function DashboardContent() {
                   </div>
                 )}
               </TabsContent>
+              <TabsContent value="history" className="mt-6">
+                <TransactionHistory />
+              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
       </div>
+
     </main>
   );
 }

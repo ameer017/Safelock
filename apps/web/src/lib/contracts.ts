@@ -1,8 +1,9 @@
 import { BaseToken } from "./token.base";
 // Contract configuration for SafeLock
 export const SAFELOCK_CONTRACT = {
-  address: "0x30503d6071c04EFd168E6E8e41022a4FBa1034c8" as `0x${string}`,
+  // address: "0x30503d6071c04EFd168E6E8e41022a4FBa1034c8" as `0x${string}`,
   // address: "0xA04fA0b313d3CEcaE1F7E1DcA16eFCC68E2787a9" as `0x${string}`,
+  address: "0x757886565bc8Cb49296C4A0397D39372b23F0c24" as `0x${string}`,
 
   "abi": [
     {

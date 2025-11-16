@@ -294,6 +294,25 @@ contract SafeLock {
         emit OwnershipTransferred(oldOwner, newOwner);
     }
 
+    /**
+     * @dev Normalize a username: lowercase and disallow leading/trailing spaces
+     */
+    function _normalize(string memory input) internal pure returns (string memory) {
+        bytes memory data = bytes(input);
+        if (data.length > 0) {
+            // Disallow leading or trailing spaces (0x20)
+            require(!(data[0] == 0x20 || data[data.length - 1] == 0x20), "No leading/trailing spaces");
+            // Convert ASCII A-Z to a-z
+            for (uint256 i = 0; i < data.length; i++) {
+                uint8 c = uint8(data[i]);
+                if (c >= 65 && c <= 90) {
+                    data[i] = bytes1(c + 32);
+                }
+            }
+        }
+        return string(data);
+    }
+
     // New: User Registration Functions
 
     /**
@@ -672,6 +691,15 @@ contract SafeLock {
         require(
             penaltyPool.totalActiveSavings == 0,
             "Cannot update with active savings"
+        );
+        // Ensure no active principal or unwithdrawn penalties exist for current cUSD token
+        require(
+            activeSavingsByToken[address(cUSDToken)] == 0,
+            "Per-token active savings not zero"
+        );
+        require(
+            penaltiesByToken[address(cUSDToken)] == 0,
+            "Unwithdrawn cUSD penalties exist"
         );
 
         address oldToken = address(cUSDToken);

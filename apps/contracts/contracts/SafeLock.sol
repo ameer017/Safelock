@@ -124,6 +124,7 @@ contract SafeLock {
 
     event PenaltiesWithdrawn(
         address indexed owner,
+        address indexed token,
         uint256 amount,
         uint256 timestamp
     );
@@ -627,22 +628,31 @@ contract SafeLock {
     }
 
     /**
-     * @dev Withdraw accumulated penalties (owner only)
+     * @dev Withdraw accumulated penalties for a specific token (owner only)
+     * @param token The token address to withdraw penalties for
      */
-    function withdrawPenalties()
+    function withdrawPenalties(address token)
         external
         reentrancyGuard
         whenNotPaused
         onlyOwner
     {
-        require(penaltyPool.totalPenalties > 0, "No penalties to withdraw");
+        uint256 amount = penaltiesByToken[token];
+        require(amount > 0, "No penalties for token");
 
-        uint256 penaltyAmount = penaltyPool.totalPenalties;
-        penaltyPool.totalPenalties = 0;
+        // Zero out per-token penalties first
+        penaltiesByToken[token] = 0;
 
-        cUSDToken.safeTransfer(owner(), penaltyAmount);
+        // Adjust aggregate penalties to keep accounting consistent
+        if (penaltyPool.totalPenalties >= amount) {
+            penaltyPool.totalPenalties -= amount;
+        } else {
+            penaltyPool.totalPenalties = 0;
+        }
 
-        emit PenaltiesWithdrawn(owner(), penaltyAmount, block.timestamp);
+        IERC20(token).safeTransfer(owner(), amount);
+
+        emit PenaltiesWithdrawn(owner(), token, amount, block.timestamp);
     }
 
     /**

@@ -324,7 +324,7 @@ contract SafeLock {
     function registerUser(
         string memory username,
         string memory profileImageHash
-    ) external validUsername(username) {
+    ) external whenNotPaused validUsername(username) {
         require(!userProfiles[msg.sender].isActive, "User already registered");
         string memory normalizedUsername = _normalize(username);
 
@@ -358,7 +358,7 @@ contract SafeLock {
     function updateProfile(
         string memory newUsername,
         string memory newProfileImageHash
-    ) external {
+    ) external whenNotPaused {
         require(userProfiles[msg.sender].isActive, "User not registered");
         UserProfile storage profile = userProfiles[msg.sender];
         string memory normalizedNew = _normalize(newUsername);
@@ -410,8 +410,6 @@ contract SafeLock {
 
         // Process each lock and refund the full amount
         uint256[] memory userLockIds = userLocks[msg.sender];
-        uint256[] memory activeLockIds = new uint256[](userActiveLocks);
-        uint256 activeIndex = 0;
 
         for (uint256 i = 0; i < userLockIds.length; i++) {
             uint256 lockId = userLockIds[i];
@@ -440,10 +438,6 @@ contract SafeLock {
 
                 // Decrement per-token active savings
                 activeSavingsByToken[lock.token] -= lock.amount;
-
-                // Store active lock ID for efficient cleanup
-                activeLockIds[activeIndex] = lockId;
-                activeIndex++;
             }
         }
 

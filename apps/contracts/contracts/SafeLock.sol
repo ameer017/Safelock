@@ -89,6 +89,9 @@ contract SafeLock {
     // Per-token penalties accrued from early withdrawals
     mapping(address => uint256) public penaltiesByToken;
 
+    // Per-token total active principal currently locked
+    mapping(address => uint256) public activeSavingsByToken;
+
     // Configuration
     uint256 public constant MIN_LOCK_DURATION = 1 days;
     uint256 public constant MAX_LOCK_DURATION = 365 days;

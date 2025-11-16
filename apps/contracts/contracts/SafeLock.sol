@@ -535,10 +535,8 @@ contract SafeLock {
     ) external reentrancyGuard whenNotPaused withinUserLimits(msg.sender) {
         require(userProfiles[msg.sender].isActive, "User not registered");
         require(amount > 0, "Amount must be greater than 0");
-        require(
-            amount <= maxLockAmountByToken[tokenAddress],
-            "Amount exceeds token maximum"
-        );
+        require(isWhitelistedToken[tokenAddress], "Token not whitelisted");
+        require(amount <= maxLockAmountByToken[tokenAddress], "Amount exceeds token maximum");
         require(
             lockDuration >= MIN_LOCK_DURATION &&
                 lockDuration <= MAX_LOCK_DURATION,
@@ -547,7 +545,6 @@ contract SafeLock {
         require(bytes(title).length > 0, "Title cannot be empty");
         require(bytes(title).length <= MAX_LOCK_TITLE_LENGTH, "Title too long");
         require(_hasNonWhitespace(title), "Title cannot be whitespace");
-        require(isWhitelistedToken[tokenAddress], "Token not whitelisted");
 
         // Transfer tokens from user to contract
         IERC20(tokenAddress).safeTransferFrom(

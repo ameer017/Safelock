@@ -174,6 +174,22 @@ describe("SafeLock", function () {
       ).to.be.revertedWith("Username already taken");
     });
 
+    it("Should normalize usernames and prevent case-insensitive duplicates", async function () {
+      await safeLock.connect(user1).registerUser("Alice", PROFILE_IMAGE_HASH);
+      await expect(
+        safeLock.connect(user2).registerUser("alice", PROFILE_IMAGE_HASH)
+      ).to.be.revertedWith("Username already taken");
+    });
+
+    it("Should reject leading/trailing spaces in usernames", async function () {
+      await expect(
+        safeLock.connect(user1).registerUser(" alice", PROFILE_IMAGE_HASH)
+      ).to.be.revertedWith("No leading/trailing spaces");
+      await expect(
+        safeLock.connect(user1).registerUser("alice ", PROFILE_IMAGE_HASH)
+      ).to.be.revertedWith("No leading/trailing spaces");
+    });
+
     it("Should prevent duplicate registrations", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
 
@@ -316,6 +332,12 @@ describe("SafeLock", function () {
       ).to.be.revertedWith("Title cannot be empty");
     });
 
+    it("Should reject whitespace-only title", async function () {
+      await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
+      await expect(
+        safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, "   ", await mockCUSD.getAddress())
+      ).to.be.revertedWith("Title cannot be whitespace");
+    });
     it("Should reject title that's too long", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
 
@@ -362,13 +384,13 @@ describe("SafeLock", function () {
       ).to.be.revertedWith("Invalid lock duration");
     });
 
-    it("Should reject amount above maximum", async function () {
+    it("Should reject amount above per-token maximum", async function () {
       await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
 
-      const maxAmount = await safeLock.MAX_LOCK_AMOUNT();
+      const maxAmount = await safeLock.maxLockAmountByToken(await mockCUSD.getAddress());
       await expect(
         safeLock.connect(user1).createSavingsLock(LOCK_DURATION, maxAmount + 1n, LOCK_TITLE, await mockCUSD.getAddress())
-      ).to.be.revertedWith("Amount exceeds maximum limit");
+      ).to.be.revertedWith("Amount exceeds token maximum");
     });
 
     it("Should enforce maximum locks per user", async function () {
@@ -503,6 +525,8 @@ describe("SafeLock", function () {
       // Check penalty pool
       const penaltyPool = await safeLock.getPenaltyPool();
       expect(penaltyPool.totalPenalties).to.equal(expectedPenalty);
+      // Check per-token penalties
+      expect(await safeLock.penaltiesByToken(await mockCUSD.getAddress())).to.equal(expectedPenalty);
     });
 
     it("Should handle penalty calculation for various amounts", async function () {
@@ -659,14 +683,24 @@ describe("SafeLock", function () {
     it("Should prevent operations when paused", async function () {
       await safeLock.pause();
 
-      await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
+      await expect(
+        safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH)
+      ).to.be.revertedWith("Contract is paused");
 
       await expect(
         safeLock.connect(user1).createSavingsLock(LOCK_DURATION, DEPOSIT_AMOUNT, LOCK_TITLE, await mockCUSD.getAddress())
       ).to.be.revertedWith("Contract is paused");
     });
 
-    it("Should allow owner to update token", async function () {
+    it("Should prevent profile updates when paused", async function () {
+      await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
+      await safeLock.pause();
+      await expect(
+        safeLock.connect(user1).updateProfile("alice2", PROFILE_IMAGE_HASH)
+      ).to.be.revertedWith("Contract is paused");
+    });
+
+    it("Should allow owner to update token when no active savings or penalties", async function () {
       const newTokenAddress = "0x9876543210987654321098765432109876543210";
       await safeLock.updateToken(newTokenAddress);
       expect(await safeLock.cUSDToken()).to.equal(newTokenAddress);
@@ -677,6 +711,37 @@ describe("SafeLock", function () {
       await expect(
         safeLock.connect(user1).updateToken(newTokenAddress)
       ).to.be.revertedWith("Ownable: caller is not the owner");
+    });
+
+    it("Should manage token whitelist and per-token max", async function () {
+      // Add a new token to whitelist
+      const MockERC20Factory = await ethers.getContractFactory("MockERC20");
+      const newToken = await MockERC20Factory.deploy("NewToken", "NEW");
+      const newAddr = await newToken.getAddress();
+      await safeLock.addWhitelistedToken(newAddr, ethers.parseEther("2000"));
+      expect(await safeLock.isWhitelistedToken(newAddr)).to.equal(true);
+      expect(await safeLock.maxLockAmountByToken(newAddr)).to.equal(ethers.parseEther("2000"));
+
+      // Update per-token max
+      await safeLock.updateTokenMaxLock(newAddr, ethers.parseEther("3000"));
+      expect(await safeLock.maxLockAmountByToken(newAddr)).to.equal(ethers.parseEther("3000"));
+
+      // Cannot remove while active savings exist
+      await safeLock.connect(user1).registerUser(USERNAME1, PROFILE_IMAGE_HASH);
+      await newToken.mint(user1.address, ethers.parseEther("1000"));
+      await newToken.connect(user1).approve(await safeLock.getAddress(), ethers.parseEther("1000"));
+      await safeLock.connect(user1).createSavingsLock(LOCK_DURATION, ethers.parseEther("1000"), "NEW lock", newAddr);
+      await expect(safeLock.removeWhitelistedToken(newAddr)).to.be.revertedWith("Active savings exist for token");
+
+      // Withdraw to clear active savings
+      await safeLock.connect(user1).withdrawSavings(0);
+
+      // Withdraw penalties for NEW token to clear per-token penalties
+      await safeLock.withdrawPenalties(newAddr);
+
+      // Remove token now that no balances are active and no penalties for NEW
+      await safeLock.removeWhitelistedToken(newAddr);
+      expect(await safeLock.isWhitelistedToken(newAddr)).to.equal(false);
     });
   });
 

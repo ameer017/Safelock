@@ -3,7 +3,8 @@ import { BaseToken } from "./token.base";
 export const SAFELOCK_CONTRACT = {
   // address: "0x30503d6071c04EFd168E6E8e41022a4FBa1034c8" as `0x${string}`,
   // address: "0xA04fA0b313d3CEcaE1F7E1DcA16eFCC68E2787a9" as `0x${string}`,
-  address: "0x757886565bc8Cb49296C4A0397D39372b23F0c24" as `0x${string}`,
+  // address: "0x757886565bc8Cb49296C4A0397D39372b23F0c24" as `0x${string}`,
+  address: "0x8bd9cE9a938C773309E5a67f59609fEDB8E23DA1" as `0x${string}`,
 
   "abi": [
     {
@@ -117,6 +118,12 @@ export const SAFELOCK_CONTRACT = {
           "indexed": true,
           "internalType": "address",
           "name": "owner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "token",
           "type": "address"
         },
         {
@@ -240,6 +247,31 @@ export const SAFELOCK_CONTRACT = {
         {
           "indexed": true,
           "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "oldMax",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newMax",
+          "type": "uint256"
+        }
+      ],
+      "name": "TokenMaxUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
           "name": "oldToken",
           "type": "address"
         },
@@ -251,6 +283,38 @@ export const SAFELOCK_CONTRACT = {
         }
       ],
       "name": "TokenUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "TokenWhitelistRemoved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "maxLockAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "TokenWhitelisted",
       "type": "event"
     },
     {
@@ -482,6 +546,43 @@ export const SAFELOCK_CONTRACT = {
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "activeSavingsByToken",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "maxLockAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "addWhitelistedToken",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {
@@ -865,6 +966,25 @@ export const SAFELOCK_CONTRACT = {
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "maxLockAmountByToken",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "owner",
       "outputs": [
@@ -887,6 +1007,25 @@ export const SAFELOCK_CONTRACT = {
     {
       "inputs": [],
       "name": "pauseTimestamp",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "penaltiesByToken",
       "outputs": [
         {
           "internalType": "uint256",
@@ -929,6 +1068,19 @@ export const SAFELOCK_CONTRACT = {
         }
       ],
       "name": "registerUser",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        }
+      ],
+      "name": "removeWhitelistedToken",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
@@ -1052,6 +1204,24 @@ export const SAFELOCK_CONTRACT = {
       "inputs": [
         {
           "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "newMax",
+          "type": "uint256"
+        }
+      ],
+      "name": "updateTokenMaxLock",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
           "name": "",
           "type": "address"
         }
@@ -1155,7 +1325,13 @@ export const SAFELOCK_CONTRACT = {
       "type": "function"
     },
     {
-      "inputs": [],
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        }
+      ],
       "name": "withdrawPenalties",
       "outputs": [],
       "stateMutability": "nonpayable",

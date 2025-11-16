@@ -86,6 +86,9 @@ contract SafeLock {
 
     PenaltyPool public penaltyPool;
 
+    // Per-token penalties accrued from early withdrawals
+    mapping(address => uint256) public penaltiesByToken;
+
     // Configuration
     uint256 public constant MIN_LOCK_DURATION = 1 days;
     uint256 public constant MAX_LOCK_DURATION = 365 days;

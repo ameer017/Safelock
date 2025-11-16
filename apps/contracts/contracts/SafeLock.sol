@@ -86,6 +86,15 @@ contract SafeLock {
 
     PenaltyPool public penaltyPool;
 
+    // Per-token penalties accrued from early withdrawals
+    mapping(address => uint256) public penaltiesByToken;
+
+    // Per-token total active principal currently locked
+    mapping(address => uint256) public activeSavingsByToken;
+
+    // Per-token maximum lock amount to handle decimals differences
+    mapping(address => uint256) public maxLockAmountByToken;
+
     // Configuration
     uint256 public constant MIN_LOCK_DURATION = 1 days;
     uint256 public constant MAX_LOCK_DURATION = 365 days;
@@ -121,11 +130,15 @@ contract SafeLock {
 
     event PenaltiesWithdrawn(
         address indexed owner,
+        address indexed token,
         uint256 amount,
         uint256 timestamp
     );
 
     event TokenUpdated(address indexed oldToken, address indexed newToken);
+    event TokenWhitelisted(address indexed token, uint256 maxLockAmount);
+    event TokenWhitelistRemoved(address indexed token);
+    event TokenMaxUpdated(address indexed token, uint256 oldMax, uint256 newMax);
 
     // New: User management events
     event UserRegistered(
@@ -193,10 +206,11 @@ contract SafeLock {
 
     // New: Username validation modifier
     modifier validUsername(string memory username) {
-        require(bytes(username).length >= 3, "Username too short");
-        require(bytes(username).length <= 32, "Username too long");
+        string memory normalized = _normalize(username);
+        require(bytes(normalized).length >= 3, "Username too short");
+        require(bytes(normalized).length <= 32, "Username too long");
         require(
-            usernameToAddress[username] == address(0),
+            usernameToAddress[normalized] == address(0),
             "Username already taken"
         );
         _;
@@ -248,6 +262,13 @@ contract SafeLock {
 
         // Initialize pause state
         isPaused = false;
+
+        // Initialize per-token max lock amounts (defaults)
+        maxLockAmountByToken[_cUSDToken] = MAX_LOCK_AMOUNT;
+        maxLockAmountByToken[_USDTToken] = MAX_LOCK_AMOUNT;
+        maxLockAmountByToken[_CGHSToken] = MAX_LOCK_AMOUNT;
+        maxLockAmountByToken[_CNGNToken] = MAX_LOCK_AMOUNT;
+        maxLockAmountByToken[_CKESToken] = MAX_LOCK_AMOUNT;
     }
 
     /**
@@ -287,6 +308,38 @@ contract SafeLock {
         emit OwnershipTransferred(oldOwner, newOwner);
     }
 
+    /**
+     * @dev Normalize a username: lowercase and disallow leading/trailing spaces
+     */
+    function _normalize(string memory input) internal pure returns (string memory) {
+        bytes memory data = bytes(input);
+        if (data.length > 0) {
+            // Disallow leading or trailing spaces (0x20)
+            require(!(data[0] == 0x20 || data[data.length - 1] == 0x20), "No leading/trailing spaces");
+            // Convert ASCII A-Z to a-z
+            for (uint256 i = 0; i < data.length; i++) {
+                uint8 c = uint8(data[i]);
+                if (c >= 65 && c <= 90) {
+                    data[i] = bytes1(c + 32);
+                }
+            }
+        }
+        return string(data);
+    }
+
+    /**
+     * @dev Validate a title has at least one non-space character
+     */
+    function _hasNonWhitespace(string memory input) internal pure returns (bool) {
+        bytes memory data = bytes(input);
+        for (uint256 i = 0; i < data.length; i++) {
+            if (data[i] != 0x20) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // New: User Registration Functions
 
     /**
@@ -297,12 +350,13 @@ contract SafeLock {
     function registerUser(
         string memory username,
         string memory profileImageHash
-    ) external validUsername(username) {
+    ) external whenNotPaused validUsername(username) {
         require(!userProfiles[msg.sender].isActive, "User already registered");
+        string memory normalizedUsername = _normalize(username);
 
         // Create user profile
         UserProfile memory newProfile = UserProfile({
-            username: username,
+            username: normalizedUsername,
             registrationDate: block.timestamp,
             isActive: true,
             lastActivity: block.timestamp,
@@ -310,7 +364,7 @@ contract SafeLock {
         });
 
         userProfiles[msg.sender] = newProfile;
-        usernameToAddress[username] = msg.sender;
+        usernameToAddress[normalizedUsername] = msg.sender;
 
         // Initialize user lock info
         userLockInfo[msg.sender] = UserLockInfo({
@@ -330,26 +384,27 @@ contract SafeLock {
     function updateProfile(
         string memory newUsername,
         string memory newProfileImageHash
-    ) external {
+    ) external whenNotPaused {
         require(userProfiles[msg.sender].isActive, "User not registered");
         UserProfile storage profile = userProfiles[msg.sender];
+        string memory normalizedNew = _normalize(newUsername);
 
         // If username is changing, validate it's unique
         if (
-            keccak256(bytes(profile.username)) != keccak256(bytes(newUsername))
+            keccak256(bytes(profile.username)) != keccak256(bytes(normalizedNew))
         ) {
             require(
-                usernameToAddress[newUsername] == address(0),
+                usernameToAddress[normalizedNew] == address(0),
                 "Username already taken"
             );
-            require(bytes(newUsername).length >= 3, "Username too short");
-            require(bytes(newUsername).length <= 32, "Username too long");
+            require(bytes(normalizedNew).length >= 3, "Username too short");
+            require(bytes(normalizedNew).length <= 32, "Username too long");
 
             // Remove old username mapping
             delete usernameToAddress[profile.username];
             // Set new username mapping
-            usernameToAddress[newUsername] = msg.sender;
-            profile.username = newUsername;
+            usernameToAddress[normalizedNew] = msg.sender;
+            profile.username = normalizedNew;
         }
 
         if (bytes(newProfileImageHash).length > 0) {
@@ -358,7 +413,7 @@ contract SafeLock {
 
         profile.lastActivity = block.timestamp;
 
-        emit UserProfileUpdated(msg.sender, newUsername, block.timestamp);
+        emit UserProfileUpdated(msg.sender, normalizedNew, block.timestamp);
     }
 
     /**
@@ -381,8 +436,6 @@ contract SafeLock {
 
         // Process each lock and refund the full amount
         uint256[] memory userLockIds = userLocks[msg.sender];
-        uint256[] memory activeLockIds = new uint256[](userActiveLocks);
-        uint256 activeIndex = 0;
 
         for (uint256 i = 0; i < userLockIds.length; i++) {
             uint256 lockId = userLockIds[i];
@@ -409,9 +462,8 @@ contract SafeLock {
                 // Transfer tokens immediately to avoid complex tracking
                 IERC20(lock.token).safeTransfer(msg.sender, refundAmount);
 
-                // Store active lock ID for efficient cleanup
-                activeLockIds[activeIndex] = lockId;
-                activeIndex++;
+                // Decrement per-token active savings
+                activeSavingsByToken[lock.token] -= lock.amount;
             }
         }
 
@@ -462,9 +514,10 @@ contract SafeLock {
     function isUsernameAvailable(
         string memory username
     ) external view returns (bool) {
-        require(bytes(username).length >= 3, "Username too short");
-        require(bytes(username).length <= 32, "Username too long");
-        return usernameToAddress[username] == address(0);
+        string memory normalized = _normalize(username);
+        require(bytes(normalized).length >= 3, "Username too short");
+        require(bytes(normalized).length <= 32, "Username too long");
+        return usernameToAddress[normalized] == address(0);
     }
 
     /**
@@ -482,7 +535,8 @@ contract SafeLock {
     ) external reentrancyGuard whenNotPaused withinUserLimits(msg.sender) {
         require(userProfiles[msg.sender].isActive, "User not registered");
         require(amount > 0, "Amount must be greater than 0");
-        require(amount <= MAX_LOCK_AMOUNT, "Amount exceeds maximum limit");
+        require(isWhitelistedToken[tokenAddress], "Token not whitelisted");
+        require(amount <= maxLockAmountByToken[tokenAddress], "Amount exceeds token maximum");
         require(
             lockDuration >= MIN_LOCK_DURATION &&
                 lockDuration <= MAX_LOCK_DURATION,
@@ -490,7 +544,7 @@ contract SafeLock {
         );
         require(bytes(title).length > 0, "Title cannot be empty");
         require(bytes(title).length <= MAX_LOCK_TITLE_LENGTH, "Title too long");
-        require(isWhitelistedToken[tokenAddress], "Token not whitelisted");
+        require(_hasNonWhitespace(title), "Title cannot be whitespace");
 
         // Transfer tokens from user to contract
         IERC20(tokenAddress).safeTransferFrom(
@@ -529,6 +583,7 @@ contract SafeLock {
 
         // Update penalty pool
         penaltyPool.totalActiveSavings += amount;
+        activeSavingsByToken[tokenAddress] += amount;
 
         // Update last activity
         userProfiles[msg.sender].lastActivity = block.timestamp;
@@ -583,6 +638,7 @@ contract SafeLock {
             withdrawalAmount = lock.amount - penaltyAmount;
 
             // Add penalty to the pool
+            penaltiesByToken[lock.token] += penaltyAmount;
             penaltyPool.totalPenalties += penaltyAmount;
             lock.penaltyAmount = penaltyAmount;
         }
@@ -601,6 +657,7 @@ contract SafeLock {
 
         // Update penalty pool
         penaltyPool.totalActiveSavings -= lock.amount;
+        activeSavingsByToken[lock.token] -= lock.amount;
 
         // Update last activity
         userProfiles[msg.sender].lastActivity = block.timestamp;
@@ -623,22 +680,31 @@ contract SafeLock {
     }
 
     /**
-     * @dev Withdraw accumulated penalties (owner only)
+     * @dev Withdraw accumulated penalties for a specific token (owner only)
+     * @param token The token address to withdraw penalties for
      */
-    function withdrawPenalties()
+    function withdrawPenalties(address token)
         external
         reentrancyGuard
         whenNotPaused
         onlyOwner
     {
-        require(penaltyPool.totalPenalties > 0, "No penalties to withdraw");
+        uint256 amount = penaltiesByToken[token];
+        require(amount > 0, "No penalties for token");
 
-        uint256 penaltyAmount = penaltyPool.totalPenalties;
-        penaltyPool.totalPenalties = 0;
+        // Zero out per-token penalties first
+        penaltiesByToken[token] = 0;
 
-        cUSDToken.safeTransfer(owner(), penaltyAmount);
+        // Adjust aggregate penalties to keep accounting consistent
+        if (penaltyPool.totalPenalties >= amount) {
+            penaltyPool.totalPenalties -= amount;
+        } else {
+            penaltyPool.totalPenalties = 0;
+        }
 
-        emit PenaltiesWithdrawn(owner(), penaltyAmount, block.timestamp);
+        IERC20(token).safeTransfer(owner(), amount);
+
+        emit PenaltiesWithdrawn(owner(), token, amount, block.timestamp);
     }
 
     /**
@@ -651,11 +717,55 @@ contract SafeLock {
             penaltyPool.totalActiveSavings == 0,
             "Cannot update with active savings"
         );
+        // Ensure no active principal or unwithdrawn penalties exist for current cUSD token
+        require(
+            activeSavingsByToken[address(cUSDToken)] == 0,
+            "Per-token active savings not zero"
+        );
+        require(
+            penaltiesByToken[address(cUSDToken)] == 0,
+            "Unwithdrawn cUSD penalties exist"
+        );
 
         address oldToken = address(cUSDToken);
         cUSDToken = IERC20(newToken);
 
         emit TokenUpdated(oldToken, newToken);
+    }
+
+    /**
+     * @dev Owner: Add a new whitelisted token with a per-token max lock amount
+     */
+    function addWhitelistedToken(address token, uint256 maxLockAmount) external onlyOwner {
+        require(token != address(0), "Invalid token");
+        require(!isWhitelistedToken[token], "Already whitelisted");
+        require(maxLockAmount > 0, "Max must be > 0");
+        isWhitelistedToken[token] = true;
+        maxLockAmountByToken[token] = maxLockAmount;
+        emit TokenWhitelisted(token, maxLockAmount);
+    }
+
+    /**
+     * @dev Owner: Update per-token max lock amount
+     */
+    function updateTokenMaxLock(address token, uint256 newMax) external onlyOwner {
+        require(isWhitelistedToken[token], "Token not whitelisted");
+        require(newMax > 0, "Max must be > 0");
+        uint256 old = maxLockAmountByToken[token];
+        maxLockAmountByToken[token] = newMax;
+        emit TokenMaxUpdated(token, old, newMax);
+    }
+
+    /**
+     * @dev Owner: Remove a token from whitelist. Only when no principal or penalties remain.
+     */
+    function removeWhitelistedToken(address token) external onlyOwner {
+        require(isWhitelistedToken[token], "Token not whitelisted");
+        require(activeSavingsByToken[token] == 0, "Active savings exist for token");
+        require(penaltiesByToken[token] == 0, "Unwithdrawn penalties for token");
+        isWhitelistedToken[token] = false;
+        maxLockAmountByToken[token] = 0;
+        emit TokenWhitelistRemoved(token);
     }
 
     // Custom pause functions

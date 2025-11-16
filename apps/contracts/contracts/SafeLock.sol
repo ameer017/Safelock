@@ -200,10 +200,11 @@ contract SafeLock {
 
     // New: Username validation modifier
     modifier validUsername(string memory username) {
-        require(bytes(username).length >= 3, "Username too short");
-        require(bytes(username).length <= 32, "Username too long");
+        string memory normalized = _normalize(username);
+        require(bytes(normalized).length >= 3, "Username too short");
+        require(bytes(normalized).length <= 32, "Username too long");
         require(
-            usernameToAddress[username] == address(0),
+            usernameToAddress[normalized] == address(0),
             "Username already taken"
         );
         _;
@@ -325,10 +326,11 @@ contract SafeLock {
         string memory profileImageHash
     ) external validUsername(username) {
         require(!userProfiles[msg.sender].isActive, "User already registered");
+        string memory normalizedUsername = _normalize(username);
 
         // Create user profile
         UserProfile memory newProfile = UserProfile({
-            username: username,
+            username: normalizedUsername,
             registrationDate: block.timestamp,
             isActive: true,
             lastActivity: block.timestamp,
@@ -336,7 +338,7 @@ contract SafeLock {
         });
 
         userProfiles[msg.sender] = newProfile;
-        usernameToAddress[username] = msg.sender;
+        usernameToAddress[normalizedUsername] = msg.sender;
 
         // Initialize user lock info
         userLockInfo[msg.sender] = UserLockInfo({
@@ -359,23 +361,24 @@ contract SafeLock {
     ) external {
         require(userProfiles[msg.sender].isActive, "User not registered");
         UserProfile storage profile = userProfiles[msg.sender];
+        string memory normalizedNew = _normalize(newUsername);
 
         // If username is changing, validate it's unique
         if (
-            keccak256(bytes(profile.username)) != keccak256(bytes(newUsername))
+            keccak256(bytes(profile.username)) != keccak256(bytes(normalizedNew))
         ) {
             require(
-                usernameToAddress[newUsername] == address(0),
+                usernameToAddress[normalizedNew] == address(0),
                 "Username already taken"
             );
-            require(bytes(newUsername).length >= 3, "Username too short");
-            require(bytes(newUsername).length <= 32, "Username too long");
+            require(bytes(normalizedNew).length >= 3, "Username too short");
+            require(bytes(normalizedNew).length <= 32, "Username too long");
 
             // Remove old username mapping
             delete usernameToAddress[profile.username];
             // Set new username mapping
-            usernameToAddress[newUsername] = msg.sender;
-            profile.username = newUsername;
+            usernameToAddress[normalizedNew] = msg.sender;
+            profile.username = normalizedNew;
         }
 
         if (bytes(newProfileImageHash).length > 0) {
@@ -384,7 +387,7 @@ contract SafeLock {
 
         profile.lastActivity = block.timestamp;
 
-        emit UserProfileUpdated(msg.sender, newUsername, block.timestamp);
+        emit UserProfileUpdated(msg.sender, normalizedNew, block.timestamp);
     }
 
     /**
@@ -491,9 +494,10 @@ contract SafeLock {
     function isUsernameAvailable(
         string memory username
     ) external view returns (bool) {
-        require(bytes(username).length >= 3, "Username too short");
-        require(bytes(username).length <= 32, "Username too long");
-        return usernameToAddress[username] == address(0);
+        string memory normalized = _normalize(username);
+        require(bytes(normalized).length >= 3, "Username too short");
+        require(bytes(normalized).length <= 32, "Username too long");
+        return usernameToAddress[normalized] == address(0);
     }
 
     /**

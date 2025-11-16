@@ -586,6 +586,7 @@ contract SafeLock {
             withdrawalAmount = lock.amount - penaltyAmount;
 
             // Add penalty to the pool
+            penaltiesByToken[lock.token] += penaltyAmount;
             penaltyPool.totalPenalties += penaltyAmount;
             lock.penaltyAmount = penaltyAmount;
         }

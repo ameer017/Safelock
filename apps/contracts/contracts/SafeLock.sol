@@ -416,6 +416,9 @@ contract SafeLock {
                 // Transfer tokens immediately to avoid complex tracking
                 IERC20(lock.token).safeTransfer(msg.sender, refundAmount);
 
+                // Decrement per-token active savings
+                activeSavingsByToken[lock.token] -= lock.amount;
+
                 // Store active lock ID for efficient cleanup
                 activeLockIds[activeIndex] = lockId;
                 activeIndex++;
@@ -536,6 +539,7 @@ contract SafeLock {
 
         // Update penalty pool
         penaltyPool.totalActiveSavings += amount;
+        activeSavingsByToken[tokenAddress] += amount;
 
         // Update last activity
         userProfiles[msg.sender].lastActivity = block.timestamp;
@@ -609,6 +613,7 @@ contract SafeLock {
 
         // Update penalty pool
         penaltyPool.totalActiveSavings -= lock.amount;
+        activeSavingsByToken[lock.token] -= lock.amount;
 
         // Update last activity
         userProfiles[msg.sender].lastActivity = block.timestamp;

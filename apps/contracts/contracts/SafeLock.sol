@@ -92,6 +92,9 @@ contract SafeLock {
     // Per-token total active principal currently locked
     mapping(address => uint256) public activeSavingsByToken;
 
+    // Per-token maximum lock amount to handle decimals differences
+    mapping(address => uint256) public maxLockAmountByToken;
+
     // Configuration
     uint256 public constant MIN_LOCK_DURATION = 1 days;
     uint256 public constant MAX_LOCK_DURATION = 365 days;
@@ -133,6 +136,9 @@ contract SafeLock {
     );
 
     event TokenUpdated(address indexed oldToken, address indexed newToken);
+    event TokenWhitelisted(address indexed token, uint256 maxLockAmount);
+    event TokenWhitelistRemoved(address indexed token);
+    event TokenMaxUpdated(address indexed token, uint256 oldMax, uint256 newMax);
 
     // New: User management events
     event UserRegistered(
@@ -256,6 +262,13 @@ contract SafeLock {
 
         // Initialize pause state
         isPaused = false;
+
+        // Initialize per-token max lock amounts (defaults)
+        maxLockAmountByToken[_cUSDToken] = MAX_LOCK_AMOUNT;
+        maxLockAmountByToken[_USDTToken] = MAX_LOCK_AMOUNT;
+        maxLockAmountByToken[_CGHSToken] = MAX_LOCK_AMOUNT;
+        maxLockAmountByToken[_CNGNToken] = MAX_LOCK_AMOUNT;
+        maxLockAmountByToken[_CKESToken] = MAX_LOCK_AMOUNT;
     }
 
     /**
@@ -312,6 +325,19 @@ contract SafeLock {
             }
         }
         return string(data);
+    }
+
+    /**
+     * @dev Validate a title has at least one non-space character
+     */
+    function _hasNonWhitespace(string memory input) internal pure returns (bool) {
+        bytes memory data = bytes(input);
+        for (uint256 i = 0; i < data.length; i++) {
+            if (data[i] != 0x20) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // New: User Registration Functions
@@ -509,7 +535,10 @@ contract SafeLock {
     ) external reentrancyGuard whenNotPaused withinUserLimits(msg.sender) {
         require(userProfiles[msg.sender].isActive, "User not registered");
         require(amount > 0, "Amount must be greater than 0");
-        require(amount <= MAX_LOCK_AMOUNT, "Amount exceeds maximum limit");
+        require(
+            amount <= maxLockAmountByToken[tokenAddress],
+            "Amount exceeds token maximum"
+        );
         require(
             lockDuration >= MIN_LOCK_DURATION &&
                 lockDuration <= MAX_LOCK_DURATION,
@@ -517,6 +546,7 @@ contract SafeLock {
         );
         require(bytes(title).length > 0, "Title cannot be empty");
         require(bytes(title).length <= MAX_LOCK_TITLE_LENGTH, "Title too long");
+        require(_hasNonWhitespace(title), "Title cannot be whitespace");
         require(isWhitelistedToken[tokenAddress], "Token not whitelisted");
 
         // Transfer tokens from user to contract
@@ -704,6 +734,41 @@ contract SafeLock {
         cUSDToken = IERC20(newToken);
 
         emit TokenUpdated(oldToken, newToken);
+    }
+
+    /**
+     * @dev Owner: Add a new whitelisted token with a per-token max lock amount
+     */
+    function addWhitelistedToken(address token, uint256 maxLockAmount) external onlyOwner {
+        require(token != address(0), "Invalid token");
+        require(!isWhitelistedToken[token], "Already whitelisted");
+        require(maxLockAmount > 0, "Max must be > 0");
+        isWhitelistedToken[token] = true;
+        maxLockAmountByToken[token] = maxLockAmount;
+        emit TokenWhitelisted(token, maxLockAmount);
+    }
+
+    /**
+     * @dev Owner: Update per-token max lock amount
+     */
+    function updateTokenMaxLock(address token, uint256 newMax) external onlyOwner {
+        require(isWhitelistedToken[token], "Token not whitelisted");
+        require(newMax > 0, "Max must be > 0");
+        uint256 old = maxLockAmountByToken[token];
+        maxLockAmountByToken[token] = newMax;
+        emit TokenMaxUpdated(token, old, newMax);
+    }
+
+    /**
+     * @dev Owner: Remove a token from whitelist. Only when no principal or penalties remain.
+     */
+    function removeWhitelistedToken(address token) external onlyOwner {
+        require(isWhitelistedToken[token], "Token not whitelisted");
+        require(activeSavingsByToken[token] == 0, "Active savings exist for token");
+        require(penaltiesByToken[token] == 0, "Unwithdrawn penalties for token");
+        isWhitelistedToken[token] = false;
+        maxLockAmountByToken[token] = 0;
+        emit TokenWhitelistRemoved(token);
     }
 
     // Custom pause functions

@@ -24,6 +24,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { CreateLockModal } from "../../components/create-lock-modal";
 import { TransactionHistory } from "../../components/transaction-history";
 import { SAFELOCK_CONTRACT } from "../../lib/contracts";
+import { tokenAmountToUsd } from "../../lib/app-utils";
 import {
   TrendingUp,
   DollarSign,
@@ -120,16 +121,23 @@ function DashboardContent() {
   const activeLocks = locks.filter(
     (lock: any) => lock.isActive && !lock.isWithdrawn
   );
-  const totalActiveAmount = activeLocks.reduce(
-    (sum: number, lock: any) => sum + Number(lock.amount),
+
+  // Aggregate values in USD, converting per-token amounts
+  const totalActiveUsd = activeLocks.reduce(
+    (sum: number, lock: any) => sum + tokenAmountToUsd(lock.amount, lock.token),
     0
   );
   const totalActiveLocks = activeLocks.length;
-  const totalWithdrawn = locks
+  const totalWithdrawnUsd = locks
     .filter((lock: any) => lock.isWithdrawn)
-    .reduce((sum: number, lock: any) => sum + Number(lock.amount), 0);
-  const totalPenalties = locks.reduce(
-    (sum: number, lock: any) => sum + Number(lock.penaltyAmount),
+    .reduce(
+      (sum: number, lock: any) =>
+        sum + tokenAmountToUsd(lock.amount, lock.token),
+      0
+    );
+  const totalPenaltiesUsd = locks.reduce(
+    (sum: number, lock: any) =>
+      sum + tokenAmountToUsd(lock.penaltyAmount, lock.token),
     0
   );
 
@@ -178,7 +186,7 @@ function DashboardContent() {
                 <>
                   <div className="text-2xl font-bold">
                     $
-                    {(totalActiveAmount / 1e18).toLocaleString(undefined, {
+                    {totalActiveUsd.toLocaleString(undefined, {
                       maximumFractionDigits: 2,
                     })}
                   </div>
@@ -205,7 +213,7 @@ function DashboardContent() {
                 <>
                   <div className="text-2xl font-bold">
                     $
-                    {(totalWithdrawn / 1e18).toLocaleString(undefined, {
+                    {totalWithdrawnUsd.toLocaleString(undefined, {
                       maximumFractionDigits: 2,
                     })}
                   </div>
@@ -255,7 +263,7 @@ function DashboardContent() {
                 <>
                   <div className="text-2xl font-bold">
                     $
-                    {(totalPenalties / 1e18).toLocaleString(undefined, {
+                    {totalPenaltiesUsd.toLocaleString(undefined, {
                       maximumFractionDigits: 2,
                     })}
                   </div>

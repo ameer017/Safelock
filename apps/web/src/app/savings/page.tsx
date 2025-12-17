@@ -25,6 +25,7 @@ import {
   CNGN_TOKEN,
   CKES_TOKEN,
 } from "../../lib/contracts";
+import { tokenAmountToUsd } from "../../lib/app-utils";
 import {
   TrendingUp,
   DollarSign,
@@ -119,10 +120,12 @@ function SavingsPageContent() {
 
   const locks = userLocks?.[1] || [];
 
-  // Calculate total active savings
-  const totalActiveSavings = locks.reduce((total: number, lock: any) => {
-    return lock.isActive ? total + Number(lock.amount) : total;
-  }, 0);
+  // Calculate total active savings in USD (per-token conversion)
+  const totalActiveSavingsUsd = locks.reduce(
+    (total: number, lock: any) =>
+      lock.isActive ? total + tokenAmountToUsd(lock.amount, lock.token) : total,
+    0
+  );
 
   const activeLocksCount = locks.filter(
     (lock: any) => lock.isActive && !lock.isWithdrawn
@@ -213,9 +216,12 @@ function SavingsPageContent() {
               </CardTitle>
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
+              <CardContent>
               <div className="text-2xl font-bold">
-                ${formatAmount(BigInt(totalActiveSavings))}
+                $
+                {totalActiveSavingsUsd.toLocaleString(undefined, {
+                  maximumFractionDigits: 2,
+                })}
               </div>
               <p className="text-xs text-muted-foreground">
                 {activeLocksCount} active lock

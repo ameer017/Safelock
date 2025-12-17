@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "./ui/alert";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { withdrawSavings } from "../lib/safelock-contract";
+import { getTokenInfo } from "../lib/app-utils";
 import { getOperationErrorMessage, OPERATIONS } from "../lib/error-utils";
 import {
   CheckCircle,
@@ -30,6 +31,7 @@ interface WithdrawModalProps {
   lockId: number;
   amount: bigint;
   unlockTime: bigint;
+  tokenAddress: string;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -47,6 +49,7 @@ export function WithdrawModal({
   lockId,
   amount,
   unlockTime,
+  tokenAddress,
   isOpen,
   onOpenChange,
 }: WithdrawModalProps) {
@@ -172,6 +175,7 @@ export function WithdrawModal({
 
   const isProcessing = isPending || isConfirmingTx;
   const penaltyInfo = calculatePenalty();
+  const tokenInfo = getTokenInfo(tokenAddress);
 
   return (
     <>
@@ -202,7 +206,9 @@ export function WithdrawModal({
                 <span className="text-sm text-muted-foreground">
                   Original Amount:
                 </span>
-                <span className="font-medium">${formatAmount(amount)}</span>
+                <span className="font-medium">
+                  {formatAmount(amount)} {tokenInfo.symbol}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-muted-foreground">
@@ -257,7 +263,8 @@ export function WithdrawModal({
                       Penalty Amount:
                     </span>
                     <span className="font-medium text-orange-800">
-                      -${formatAmount(penaltyInfo.penaltyAmount)}
+                      -{formatAmount(penaltyInfo.penaltyAmount)}{" "}
+                      {tokenInfo.symbol}
                     </span>
                   </div>
                   <div className="flex justify-between border-t border-orange-200 pt-2">
@@ -265,7 +272,8 @@ export function WithdrawModal({
                       You&apos;ll Receive:
                     </span>
                     <span className="font-bold text-orange-900">
-                      ${formatAmount(penaltyInfo.withdrawalAmount)}
+                      {formatAmount(penaltyInfo.withdrawalAmount)}{" "}
+                      {tokenInfo.symbol}
                     </span>
                   </div>
                 </div>
@@ -379,10 +387,11 @@ export function WithdrawModal({
               ) : penaltyInfo.isEarlyWithdrawal ? (
                 <>
                   <DollarSign className="h-4 w-4 mr-2" />
-                  Early Withdraw ${formatAmount(penaltyInfo.withdrawalAmount)}
+                  Early Withdraw {formatAmount(penaltyInfo.withdrawalAmount)}{" "}
+                  {tokenInfo.symbol}
                 </>
               ) : (
-                `Withdraw $${formatAmount(amount)}`
+                `Withdraw ${formatAmount(amount)} ${tokenInfo.symbol}`
               )}
             </Button>
           </DialogFooter>

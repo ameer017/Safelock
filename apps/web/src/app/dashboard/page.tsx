@@ -24,7 +24,7 @@ import { Skeleton } from "../../components/ui/skeleton";
 import { CreateLockModal } from "../../components/create-lock-modal";
 import { TransactionHistory } from "../../components/transaction-history";
 import { SAFELOCK_CONTRACT } from "../../lib/contracts";
-import { tokenAmountToUsd } from "../../lib/app-utils";
+import { getTokenInfo, tokenAmountToUsd } from "../../lib/app-utils";
 import {
   TrendingUp,
   DollarSign,
@@ -140,6 +140,11 @@ function DashboardContent() {
       sum + tokenAmountToUsd(lock.penaltyAmount, lock.token),
     0
   );
+
+  const formatTokenAmount = (amount: any) =>
+    (Number(amount) / 1e18).toLocaleString(undefined, {
+      maximumFractionDigits: 2,
+    });
 
   return (
     <main className="flex-1 p-6">
@@ -367,11 +372,8 @@ function DashboardContent() {
                           </div>
                           <div className="text-right">
                             <p className="font-medium">
-                              $
-                              {(Number(lock.amount) / 1e18).toLocaleString(
-                                undefined,
-                                { maximumFractionDigits: 2 }
-                              )}
+                              {formatTokenAmount(lock.amount)}{" "}
+                              {getTokenInfo(lock.token).symbol}
                             </p>
                             <Badge
                               variant={
@@ -391,8 +393,9 @@ function DashboardContent() {
                             </Badge>
                             {lock.penaltyAmount > 0 && (
                               <p className="text-xs text-red-600 mt-1">
-                                Penalty: $
-                                {(Number(lock.penaltyAmount) / 1e18).toFixed(2)}
+                                Penalty:{" "}
+                                {formatTokenAmount(lock.penaltyAmount)}{" "}
+                                {getTokenInfo(lock.token).symbol}
                               </p>
                             )}
                           </div>
@@ -450,11 +453,8 @@ function DashboardContent() {
                           </div>
                           <div className="text-right">
                             <p className="font-medium">
-                              $
-                              {(Number(lock.amount) / 1e18).toLocaleString(
-                                undefined,
-                                { maximumFractionDigits: 2 }
-                              )}
+                              {formatTokenAmount(lock.amount)}{" "}
+                              {getTokenInfo(lock.token).symbol}
                             </p>
                             <Badge 
                               variant={isReadyToWithdraw ? "default" : "secondary"} 
@@ -522,21 +522,17 @@ function DashboardContent() {
                             </div>
                             <div className="text-right">
                               <p className="font-medium">
-                                $
-                                {(Number(lock.amount) / 1e18).toLocaleString(
-                                  undefined,
-                                  { maximumFractionDigits: 2 }
-                                )}
+                                {formatTokenAmount(lock.amount)}{" "}
+                                {getTokenInfo(lock.token).symbol}
                               </p>
                               <Badge variant="secondary" className="text-xs">
                                 Withdrawn
                               </Badge>
                               {lock.penaltyAmount > 0 && (
                                 <p className="text-xs text-red-600 mt-1">
-                                  Penalty: $
-                                  {(Number(lock.penaltyAmount) / 1e18).toFixed(
-                                    2
-                                  )}
+                                  Penalty:{" "}
+                                  {formatTokenAmount(lock.penaltyAmount)}{" "}
+                                  {getTokenInfo(lock.token).symbol}
                                 </p>
                               )}
                             </div>

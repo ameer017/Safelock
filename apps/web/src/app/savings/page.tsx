@@ -19,13 +19,8 @@ import { CreateLockModal } from "../../components/create-lock-modal";
 import { WithdrawModal } from "../../components/withdraw-modal";
 import {
   SAFELOCK_CONTRACT,
-  CUSD_TOKEN,
-  USDT_TOKEN,
-  CGHS_TOKEN,
-  CNGN_TOKEN,
-  CKES_TOKEN,
 } from "../../lib/contracts";
-import { tokenAmountToUsd } from "../../lib/app-utils";
+import { getTokenInfo, tokenAmountToUsd } from "../../lib/app-utils";
 import {
   TrendingUp,
   DollarSign,
@@ -38,25 +33,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-const TOKEN_MAP: Record<string, { symbol: string; name: string }> = {
-  [CUSD_TOKEN.address.toLowerCase()]: { symbol: "cUSD", name: "Celo Dollar" },
-  [USDT_TOKEN.address.toLowerCase()]: { symbol: "USDT", name: "Tether USD" },
-  [CGHS_TOKEN.address.toLowerCase()]: { symbol: "cGHS", name: "Ghana Cedi" },
-  [CNGN_TOKEN.address.toLowerCase()]: {
-    symbol: "cNGN",
-    name: "Nigerian Naira",
-  },
-  [CKES_TOKEN.address.toLowerCase()]: {
-    symbol: "cKES",
-    name: "Kenyan Shilling",
-  },
-};
-
-const getTokenInfo = (tokenAddress: string) => {
-  const tokenInfo = TOKEN_MAP[tokenAddress.toLowerCase()];
-  return tokenInfo || { symbol: "Unknown", name: "Unknown Token" };
-};
-
 function SavingsPageContent() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
@@ -65,6 +41,7 @@ function SavingsPageContent() {
     id: number;
     amount: bigint;
     unlockTime: bigint;
+    token: string;
   } | null>(null);
 
   const { data: isRegistered, isLoading: isCheckingRegistration } =
@@ -176,6 +153,7 @@ function SavingsPageContent() {
       id: Number(lock.id),
       amount: lock.amount,
       unlockTime: lock.unlockTime,
+      token: lock.token,
     });
     setWithdrawModalOpen(true);
   };
@@ -433,6 +411,7 @@ function SavingsPageContent() {
             lockId={selectedLock.id}
             amount={selectedLock.amount}
             unlockTime={selectedLock.unlockTime}
+            tokenAddress={selectedLock.token}
             isOpen={withdrawModalOpen}
             onOpenChange={setWithdrawModalOpen}
           >

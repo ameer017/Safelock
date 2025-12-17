@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "./ui/alert";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { SAFELOCK_CONTRACT } from "../lib/contracts";
+import { tokenAmountToUsd } from "../lib/app-utils";
 import {
   AlertTriangle,
   Loader2,
@@ -123,16 +124,11 @@ export function AccountDeactivationModal({ children }: AccountDeactivationModalP
   const activeLocks = locks.filter(
     (lock: any) => lock.isActive && !lock.isWithdrawn
   );
-  const totalActiveAmount = activeLocks.reduce(
-    (sum: number, lock: any) => sum + Number(lock.amount),
+  const totalActiveUsd = activeLocks.reduce(
+    (sum: number, lock: any) =>
+      sum + tokenAmountToUsd(lock.amount, lock.token),
     0
   );
-
-  const formatAmount = (amount: bigint) => {
-    return (Number(amount) / 1e18).toLocaleString(undefined, {
-      maximumFractionDigits: 2,
-    });
-  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -197,9 +193,12 @@ export function AccountDeactivationModal({ children }: AccountDeactivationModalP
                     <span className="font-medium">{activeLocks.length}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Total Locked Amount:</span>
+                    <span>Total Locked Amount (USD):</span>
                     <span className="font-medium">
-                      ${formatAmount(BigInt(totalActiveAmount))}
+                      $
+                      {totalActiveUsd.toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}
                     </span>
                   </div>
                 </div>

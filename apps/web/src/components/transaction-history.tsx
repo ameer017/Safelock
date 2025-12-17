@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/
 import { Badge } from "./ui/badge";
 import { Skeleton } from "./ui/skeleton";
 import { SAFELOCK_CONTRACT } from "../lib/contracts";
+import { getTokenInfo, tokenAmountToUsd } from "../lib/app-utils";
 import { 
   TrendingUp, 
   Clock, 
@@ -27,6 +28,7 @@ interface Transaction {
   lockId: number;
   reason?: string;
   isEarlyWithdrawal: boolean;
+  token: string;
 }
 
 export function TransactionHistory({ className }: TransactionHistoryProps) {
@@ -57,6 +59,7 @@ export function TransactionHistory({ className }: TransactionHistoryProps) {
           timestamp: Number(lock.lockTime),
           lockId: Number(lock.id),
           isEarlyWithdrawal: false,
+          token: lock.token,
         });
 
         // Add withdrawal transaction if withdrawn
@@ -71,6 +74,7 @@ export function TransactionHistory({ className }: TransactionHistoryProps) {
             lockId: Number(lock.id),
             reason: isEarlyWithdrawal ? "Early withdrawal with penalty" : "Regular withdrawal",
             isEarlyWithdrawal: isEarlyWithdrawal,
+            token: lock.token,
           });
         }
       });
@@ -82,8 +86,13 @@ export function TransactionHistory({ className }: TransactionHistoryProps) {
     setIsLoading(false);
   }, [userLocks]);
 
-  const formatAmount = (amount: bigint) => {
+  const formatTokenAmount = (amount: bigint) => {
     return (Number(amount) / 1e18).toFixed(2);
+  };
+
+  const formatUsdAmount = (amount: bigint, token: string) => {
+    const usd = tokenAmountToUsd(amount, token);
+    return usd.toFixed(2);
   };
 
   const formatDate = (timestamp: number) => {
@@ -203,26 +212,35 @@ export function TransactionHistory({ className }: TransactionHistoryProps) {
                 </div>
               </div>
               <div className="text-right">
-                <div className="flex items-center space-x-2">
-                  <p className={`font-medium ${getTransactionColor(transaction)}`}>
-                    {transaction.type === 'lock_created' ? '+' : '-'}$
-                    {formatAmount(transaction.amount)}
+                <div className="flex flex-col items-end space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <p className={`font-medium ${getTransactionColor(transaction)}`}>
+                      {transaction.type === 'lock_created' ? '+' : '-'}
+                      {formatTokenAmount(transaction.amount)}{" "}
+                      {getTokenInfo(transaction.token).symbol}
+                    </p>
+                    <Badge 
+                      variant={
+                        transaction.type === 'early_withdrawal' ? 'destructive' : 
+                        transaction.type === 'withdrawal' ? 'default' : 'secondary'
+                      }
+                      className="text-xs"
+                    >
+                      {transaction.type === 'lock_created' && 'Locked'}
+                      {transaction.type === 'withdrawal' && 'Withdrawn'}
+                      {transaction.type === 'early_withdrawal' && 'Early Withdrawal'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    ≈ $
+                    {formatUsdAmount(transaction.amount, transaction.token)}
                   </p>
-                  <Badge 
-                    variant={
-                      transaction.type === 'early_withdrawal' ? 'destructive' : 
-                      transaction.type === 'withdrawal' ? 'default' : 'secondary'
-                    }
-                    className="text-xs"
-                  >
-                    {transaction.type === 'lock_created' && 'Locked'}
-                    {transaction.type === 'withdrawal' && 'Withdrawn'}
-                    {transaction.type === 'early_withdrawal' && 'Early Withdrawal'}
-                  </Badge>
                 </div>
                 {transaction.penaltyAmount && transaction.penaltyAmount > 0n && (
                   <p className="text-xs text-red-600 mt-1">
-                    Penalty: -${formatAmount(transaction.penaltyAmount)}
+                    Penalty: -
+                    {formatTokenAmount(transaction.penaltyAmount)}{" "}
+                    {getTokenInfo(transaction.token).symbol}
                   </p>
                 )}
                 {transaction.isEarlyWithdrawal && (
